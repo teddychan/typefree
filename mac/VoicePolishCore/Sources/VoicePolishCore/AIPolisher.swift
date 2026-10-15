@@ -111,44 +111,6 @@ public class AIPolisher {
         }
     }
 
-    /// 自带 Key 的海外服务商（OpenAI / Gemini / Claude）：只用于润色和问 AI，识别仍走火山 / 百炼。
-    /// OpenAI、Gemini 走各自官方的 OpenAI 兼容 chat/completions；Claude 走 Anthropic 原生 Messages API。
-    /// 模型可在设置里改成任意 ID，留空回落 defaultModel（2026-10 各家文档里的快速档）。
-    public struct BYOKProvider {
-        public let id: String              // polish_provider 的取值
-        public let keyConfigKey: String
-        public let envKey: String
-        public let modelConfigKey: String
-        public let defaultModel: String
-        public let consoleURL: String
-        let url: URL
-    }
-
-    public static let byokProviders: [BYOKProvider] = [
-        BYOKProvider(id: "openai", keyConfigKey: "openai_api_key", envKey: "OPENAI_API_KEY",
-                     modelConfigKey: "openai_polish_model", defaultModel: "gpt-6-luna",
-                     consoleURL: "https://platform.openai.com/api-keys",
-                     url: URL(string: "https://api.openai.com/v1/chat/completions")!),
-        BYOKProvider(id: "gemini", keyConfigKey: "gemini_api_key", envKey: "GEMINI_API_KEY",
-                     modelConfigKey: "gemini_polish_model", defaultModel: "gemini-3.8-flash",
-                     consoleURL: "https://aistudio.google.com/apikey",
-                     url: URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")!),
-        BYOKProvider(id: "claude", keyConfigKey: "anthropic_api_key", envKey: "ANTHROPIC_API_KEY",
-                     modelConfigKey: "claude_polish_model", defaultModel: "claude-haiku-5-5",
-                     consoleURL: "https://console.anthropic.com/settings/keys",
-                     url: URL(string: "https://api.anthropic.com/v1/messages")!),
-    ]
-
-    public static func byokProvider(_ id: String?) -> BYOKProvider? {
-        byokProviders.first { $0.id == id }
-    }
-
-    /// 设置里填的模型；没填（或只填了空格）用默认模型。
-    public static func configuredModel(for provider: BYOKProvider, config: VoicePolishConfig = .shared) -> String {
-        let saved = config.string(forKey: provider.modelConfigKey)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return saved.isEmpty ? provider.defaultModel : saved
-    }
-
     public static func currentPolishSelection() -> PolishSelection {
         let config = VoicePolishConfig.shared
         let provider = config.string(forKey: "polish_provider") ?? "qwen"
@@ -157,6 +119,9 @@ public class AIPolisher {
         }
         if let byok = byokProvider(provider) {
             return PolishSelection(provider: byok.id, model: configuredModel(for: byok, config: config))
+        }
+        if provider == Custom.providerID {
+            return PolishSelection(provider: Custom.providerID, model: Custom.model(config: config))
         }
         switch provider {
         case "qwen":
@@ -508,6 +473,15 @@ public class AIPolisher {
             return (byok.id, byok.url, Self.configuredModel(for: byok, config: config), key)
         }
 
+        if provider == Custom.providerID {
+            let anthropic = Custom.isAnthropic(config: config)
+            guard Custom.isConfigured(config: config),
+                  let url = Custom.endpoint(base: config.string(forKey: Custom.baseURLKey) ?? "", anthropic: anthropic)
+            else { return nil }
+            return (anthropic ? Custom.anthropicProviderName : Custom.providerID, url,
+                    Custom.model(config: config), config.string(forKey: Custom.apiKeyKey) ?? "")
+        }
+
         switch provider {
         case "qwen":
             guard let key = config.string(forKey: "dashscope_api_key", envKey: "DASHSCOPE_API_KEY"),
@@ -562,7 +536,7 @@ public class AIPolisher {
                 ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": userPrompt]
             ]
-            if provider.name == "claude" {
+            if Self.speaksAnthropic(provider.name) {
                 return Self.anthropicBody(model: model, messages: messages, maxTokens: 2000, stream: false)
             }
             var body: [String: Any] = ["model": model, "messages": messages]
@@ -578,6 +552,8 @@ public class AIPolisher {
                 body["temperature"] = 0.1
                 body["max_tokens"] = 2000
                 body["thinking"] = ["type": "disabled"]
+            } else if provider.name == Custom.providerID {
+                // 自定义网关：不知道后面是什么模型，只发标准字段，别带各家私有参数
             } else {  // doubao
                 body["temperature"] = 0.1
                 body["max_tokens"] = 2000
@@ -681,51 +657,6 @@ public class AIPolisher {
     }
 
     // MARK: - HTTP 调用
-
-    /// Claude 用 x-api-key + anthropic-version；其余（含 OpenAI / Gemini 兼容接口）用 Bearer。
-    static func authorize(_ request: inout URLRequest, provider: String, apiKey: String) {
-        if provider == "claude" {
-            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        } else {
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-        }
-    }
-
-    /// OpenAI 风格的 messages 转成 Anthropic Messages API 请求体：system 角色提到顶层 system 字段。
-    static func anthropicBody(model: String, messages: [[String: Any]], maxTokens: Int, stream: Bool) -> [String: Any] {
-        let system = messages.filter { $0["role"] as? String == "system" }
-            .compactMap { $0["content"] as? String }.joined(separator: "\n\n")
-        var body: [String: Any] = [
-            "model": model,
-            "max_tokens": maxTokens,
-            "messages": messages.filter { $0["role"] as? String != "system" }
-        ]
-        if !system.isEmpty { body["system"] = system }
-        if stream { body["stream"] = true }
-        return body
-    }
-
-    /// 取出回答正文和 token 用量：OpenAI 兼容的 choices[0].message.content，或 Anthropic 的 content[].text。
-    static func parseCompletion(_ json: [String: Any]) -> (String, Int, Int)? {
-        let usage = json["usage"] as? [String: Any]
-        if let content = ((json["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any])?["content"] as? String {
-            return (content.trimmingCharacters(in: .whitespacesAndNewlines),
-                    usage?["prompt_tokens"] as? Int ?? 0, usage?["completion_tokens"] as? Int ?? 0)
-        }
-        if let blocks = json["content"] as? [[String: Any]] {
-            let text = blocks.filter { $0["type"] as? String == "text" }
-                .compactMap { $0["text"] as? String }.joined()
-            return (text.trimmingCharacters(in: .whitespacesAndNewlines),
-                    usage?["input_tokens"] as? Int ?? 0, usage?["output_tokens"] as? Int ?? 0)
-        }
-        return nil
-    }
-
-    /// Gemini 的 OpenAI 兼容接口出错时可能回 [{"error":…}]：取第一个元素，按普通错误对象处理。
-    static func jsonDictionary(_ object: Any?) -> [String: Any]? {
-        (object as? [String: Any]) ?? (object as? [[String: Any]])?.first
-    }
 
     private func callChatCompletionsWithTokens(url: URL, apiKey: String, provider: String = "", body: [String: Any], completion: @escaping (Result<(String, Int, Int), Error>) -> Void) {
         var request = URLRequest(url: url)
@@ -862,12 +793,14 @@ public class AIPolisher {
         let forceSearch = Self.isTimeSensitive(question)
         debugLog?("Ask provider=\(provider.name) model=\(provider.model) forceSearch=\(forceSearch) history=\(history.count)")
         func makeBody(_ model: String, search: Bool) -> [String: Any] {
-            if provider.name == "claude" {
+            if Self.speaksAnthropic(provider.name) {
                 return Self.anthropicBody(model: model, messages: messages, maxTokens: 2000, stream: true)
             }
             var body: [String: Any] = ["model": model, "messages": messages, "stream": true]
             if provider.name == "openai" || provider.name == "gemini" {
                 body["reasoning_effort"] = "low"   // 同润色：推理模型不收 temperature
+            } else if provider.name == Custom.providerID {
+                // 同润色：自定义网关只发标准字段
             } else if provider.name == "qwen" {
                 body["top_p"] = 0.8; body["temperature"] = 0.5; body["enable_thinking"] = false
                 if search {
@@ -1204,6 +1137,10 @@ public class AIPolisher {
         }
         if let err = json["error"] as? String, !err.isEmpty {
             return friendlyProviderError(code: nil, type: nil, message: err) ?? err
+        }
+        // 部分自建网关：{"meta":{"type":"Unauthorized","message":…,"code":401},"data":{}}
+        if let meta = json["meta"] as? [String: Any], let m = meta["message"] as? String, !m.isEmpty {
+            return friendlyProviderError(code: nil, type: meta["type"] as? String, message: m) ?? m
         }
         if let m = json["message"] as? String, !m.isEmpty {
             let code = json["code"] as? String

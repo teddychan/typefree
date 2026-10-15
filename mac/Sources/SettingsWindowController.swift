@@ -1115,6 +1115,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
     private var bigASRAPIKeyField: NSSecureTextField?
     private var bailianKeyField: NSSecureTextField?
+    /// 语音识别里 OpenAI / Gemini / 自定义的 Key 框，按服务商存。OpenAI、Gemini 和「语音优化」共用同一个 Key，两边框联动
+    private var asrKeyFields: [CloudASRTranscriber.ASRProvider: NSSecureTextField] = [:]
+    /// 识别服务商分段当前显示的服务商顺序（百炼默认隐藏，见 makeASRCard）
+    private var asrSegProviders: [CloudASRTranscriber.ASRProvider] = [.volcano, .openai, .gemini, .custom]
+    /// 自定义识别网关「实际请求地址」提示行
+    private var customASREndpointLabel: NSTextField?
     private var asrVersionControl: VPSegmentedControl?
     private var asrProviderControl: VPSegmentedControl?
     private var asrKeyContainer: NSStackView?
@@ -1123,6 +1129,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     private var arkAPIKeyField: NSSecureTextField?
     /// OpenAI / Gemini / Claude 的 Key 框，按 provider id 存
     private var byokKeyFields: [String: NSSecureTextField] = [:]
+    /// 自定义服务商「实际请求地址」提示行（地址 / 接口格式改了就刷新）
+    private var customEndpointLabel: NSTextField?
     private var polishProviderControl: VPSegmentedControl?
     private var polishKeyContainer: NSStackView?
     private var polishGetKeyButton: NSButton?
@@ -4038,16 +4046,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     }
 
     @objc private func asrProviderChanged(_ sender: VPSegmentedControl) {
-        let provider: CloudASRTranscriber.ASRProvider = (sender.selectedSegment == 1) ? .bailian : .volcano
+        let provider = asrSegProviders.indices.contains(sender.selectedSegment) ? asrSegProviders[sender.selectedSegment] : .volcano
         switch provider {
         case .volcano:
             // 回到火山：之前若就是火山某档则保留，否则用极速版
             let cur = CloudASRTranscriber().currentVersion()
             let v: CloudASRTranscriber.ASRVersion = (cur.provider == .volcano) ? cur : .turbo
             config.save(values: ["bigasr_version": v.rawValue])
-        case .bailian:
-            config.save(values: ["bigasr_version": "bailian"])
+        default:
+            config.save(values: ["bigasr_version": provider.defaultVersion.rawValue])
         }
+        asrTestResultLabel?.stringValue = ""
         refreshASRFields(for: provider)
         // 识别服务商变了，优化卡片可能要在「填框」和「已复用」之间切换，刷新一下
         if let seg = polishProviderControl {
@@ -4107,14 +4116,94 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             modelHint.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
 
             asrGetKeyButton?.identifier = NSUserInterfaceItemIdentifier("https://bailian.console.aliyun.com/")
+
+        case .openai, .gemini:
+            let isOpenAI = provider == .openai
+            let name = provider.displayName
+            let keyField = makeSecureField(config.string(forKey: isOpenAI ? CloudASRTranscriber.LLMASR.openAIKeyKey
+                                                                         : CloudASRTranscriber.LLMASR.geminiKeyKey))
+            keyField.delegate = self
+            asrKeyFields[provider] = keyField
+            let keyRow = makeFieldRow(label: "\(name) API Key", control: keyField, placeholder: "请输入 \(name) API Key")
+            container.addArrangedSubview(keyRow)
+            keyRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let modelKey = isOpenAI ? CloudASRTranscriber.LLMASR.openAIModelKey : CloudASRTranscriber.LLMASR.geminiModelKey
+            let defaultModel = isOpenAI ? CloudASRTranscriber.LLMASR.openAIDefaultModel : CloudASRTranscriber.LLMASR.geminiDefaultModel
+            let modelField = makeTextField(config.string(forKey: modelKey), mono: true)
+            modelField.identifier = NSUserInterfaceItemIdentifier("polishcfg:" + modelKey)
+            modelField.delegate = self
+            let modelRow = makeFieldRow(label: "模型", control: modelField, placeholder: "\(defaultModel)（留空用默认）")
+            container.addArrangedSubview(modelRow)
+            modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let hint = label(isOpenAI
+                ? "和「语音优化」的 OpenAI 共用一个 Key，填一处即可。模型留空用 gpt-transcribe（OpenAI 推荐的转写模型）。"
+                : "和「语音优化」的 Gemini 共用一个 Key，填一处即可。Gemini 没有专门的转写接口，是把音频直接交给模型转写。",
+                size: 11.5, weight: .regular, color: theme.text3)
+            hint.maximumNumberOfLines = 0
+            container.addArrangedSubview(hint)
+            hint.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let console = AIPolisher.byokProvider(isOpenAI ? "openai" : "gemini")?.consoleURL ?? AppLinks.apiKeyGuideURL
+            asrGetKeyButton?.identifier = NSUserInterfaceItemIdentifier(console)
+
+        case .custom:
+            let note = label("填你自己的 OpenAI 兼容语音识别网关（需要支持 /audio/transcriptions）。",
+                             size: 11.5, weight: .medium, color: theme.text2)
+            note.maximumNumberOfLines = 0
+            container.addArrangedSubview(note)
+            note.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let urlField = makeTextField(config.string(forKey: CloudASRTranscriber.LLMASR.customBaseURLKey), mono: true)
+            urlField.identifier = NSUserInterfaceItemIdentifier("polishcfg:" + CloudASRTranscriber.LLMASR.customBaseURLKey)
+            urlField.delegate = self
+            let urlRow = makeFieldRow(label: "接口地址", control: urlField, placeholder: "https://your-gateway.example.com/v1")
+            container.addArrangedSubview(urlRow)
+            urlRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            let endpointHint = label("", size: 11.5, weight: .regular, color: theme.text3)
+            endpointHint.maximumNumberOfLines = 0
+            customASREndpointLabel = endpointHint
+            container.addArrangedSubview(endpointHint)
+            endpointHint.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            refreshCustomASREndpointLabel()
+
+            let keyField = makeSecureField(config.string(forKey: CloudASRTranscriber.LLMASR.customKeyKey))
+            keyField.delegate = self
+            asrKeyFields[.custom] = keyField
+            let keyRow = makeFieldRow(label: "API Key（可选）", control: keyField, placeholder: "网关不需要鉴权就留空")
+            container.addArrangedSubview(keyRow)
+            keyRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let modelField = makeTextField(config.string(forKey: CloudASRTranscriber.LLMASR.customModelKey), mono: true)
+            modelField.identifier = NSUserInterfaceItemIdentifier("polishcfg:" + CloudASRTranscriber.LLMASR.customModelKey)
+            modelField.delegate = self
+            let modelRow = makeFieldRow(label: "模型", control: modelField, placeholder: "必填，如 gpt-transcribe / whisper-1")
+            container.addArrangedSubview(modelRow)
+            modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+        }
+        // 自定义网关没有统一的「获取密钥」页
+        asrGetKeyButton?.isHidden = provider == .custom
+    }
+
+    /// 自定义识别网关：把会真正请求的地址写出来
+    private func refreshCustomASREndpointLabel() {
+        guard let hint = customASREndpointLabel else { return }
+        let base = (config.string(forKey: CloudASRTranscriber.LLMASR.customBaseURLKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if base.isEmpty {
+            hint.textColor = theme.text3
+            hint.stringValue = "填 base URL（如 https://…/v1）即可，会自动补上 /audio/transcriptions"
+        } else if let url = CloudASRTranscriber.LLMASR.customEndpoint(base: base) {
+            hint.textColor = theme.text3
+            hint.stringValue = "实际请求：\(url.absoluteString)"
+        } else {
+            hint.textColor = theme.danger
+            hint.stringValue = "地址无效：需以 https:// 或 http:// 开头"
         }
     }
 
-    private static func asrProviderSegmentIndex(for provider: CloudASRTranscriber.ASRProvider) -> Int {
-        switch provider {
-        case .volcano: return 0
-        case .bailian: return 1
-        }
+    private func asrProviderSegmentIndex(for provider: CloudASRTranscriber.ASRProvider) -> Int {
+        asrSegProviders.firstIndex(of: provider) ?? 0
     }
 
     private static func asrVersionSegmentIndex(for version: CloudASRTranscriber.ASRVersion) -> Int {
@@ -4122,7 +4211,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         case .turbo: return 0
         case .standard: return 1
         case .v2: return 2
-        case .bailian: return 0
+        case .bailian, .openai, .gemini, .custom: return 0
         }
     }
 
@@ -4156,6 +4245,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             field.delegate = self
             byokKeyFields[p.id] = field
         }
+        let customKeyField = makeSecureField(config.string(forKey: AIPolisher.Custom.apiKeyKey))
+        customKeyField.delegate = self
+        byokKeyFields[AIPolisher.Custom.providerID] = customKeyField
 
         // 首次/未配置时，顶部一句明确的「最后一步」引导（会员、试用中都不用填 Key，不催）
         if !CloudASRTranscriber().isConfigured() && !LicenseManager.shared.hasActiveMembership() && !TrialManager.shared.isInTrial {
@@ -4382,17 +4474,20 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
         // 服务商分段：火山引擎 / 百炼(阿里)
         let providerLabel = label("服务商", size: 12.5, weight: .medium, color: theme.text2)
+        let asrProviderNow = CloudASRTranscriber().currentVersion().provider
+        // 9-15 Ray：百炼选项隐藏；已经在用百炼的老用户仍显示（好切回来）
+        asrSegProviders = asrProviderNow == .bailian ? [.volcano, .bailian, .openai, .gemini, .custom]
+                                                     : [.volcano, .openai, .gemini, .custom]
         let providerSeg = VPSegmentedControl(
-            labels: ["火山引擎（豆包）", "百炼（阿里）"],
+            labels: asrSegProviders.map { $0 == .volcano ? "火山引擎（豆包）" : $0 == .bailian ? "百炼（阿里）" : $0.displayName },
             trackBg: theme.cardAlt, trackBorder: theme.sep,
             selBg: theme.segSelBg, selBorder: theme.sep,
             selText: theme.text, normalText: theme.text2,
             target: self, action: #selector(asrProviderChanged(_:)))
-        let asrProviderNow = CloudASRTranscriber().currentVersion().provider
-        providerSeg.selectedSegment = Self.asrProviderSegmentIndex(for: asrProviderNow)
+        providerSeg.selectedSegment = asrProviderSegmentIndex(for: asrProviderNow)
         asrProviderControl = providerSeg
-        // 9-15 Ray：识别服务商只留火山，百炼选项隐藏；已经在用百炼的老用户仍能看到分段（好切回来）
-        let showASRProviderSeg = asrProviderNow == .bailian
+        // 加了 OpenAI / Gemini / 自定义后，服务商分段一直显示
+        let showASRProviderSeg = true
 
         // 动态区：随服务商切换（火山→Key+版本三选；百炼→DashScope Key+模型说明）
         let keyContainer = NSStackView()
@@ -4481,7 +4576,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let current = config.string(forKey: "polish_provider") ?? "qwen"
         // 9-15 Ray：润色只留「百炼 / 不优化」，豆包隐藏；已经选了豆包的老用户仍显示三段
         polishSegProviders = current == "doubao" ? ["qwen", "doubao", "none"] : ["qwen", "none"]
-        polishSegProviders.insert(contentsOf: AIPolisher.byokProviders.map(\.id), at: polishSegProviders.count - 1)
+        polishSegProviders.insert(contentsOf: AIPolisher.byokProviders.map(\.id) + [AIPolisher.Custom.providerID],
+                                  at: polishSegProviders.count - 1)
         let seg = VPSegmentedControl(
             labels: polishSegProviders.map { Self.polishProviderLabel($0) },
             trackBg: theme.cardAlt,
@@ -4659,6 +4755,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         case "openai": return "OpenAI"
         case "gemini": return "Gemini"
         case "claude": return "Claude"
+        case AIPolisher.Custom.providerID: return "自定义"
         case "none": return "不优化"
         default: return "百炼（阿里）"
         }
@@ -4733,7 +4830,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             container.addArrangedSubview(row)
             row.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
             let modelField = makeTextField(config.string(forKey: p.modelConfigKey), mono: true)
-            modelField.identifier = NSUserInterfaceItemIdentifier("pmodel:" + p.modelConfigKey)
+            modelField.identifier = NSUserInterfaceItemIdentifier("polishcfg:" + p.modelConfigKey)
             modelField.delegate = self
             let modelRow = makeFieldRow(label: "模型", control: modelField,
                                         placeholder: "\(p.defaultModel)（留空用默认）")
@@ -4741,6 +4838,58 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
             polishGetKeyButton?.isHidden = false
             polishGetKeyButton?.identifier = NSUserInterfaceItemIdentifier(p.consoleURL)
+            polishTestButton?.isEnabled = true
+            polishTestButton?.title = "▷ 测试连接"
+        case AIPolisher.Custom.providerID:
+            let note = label("填你自己的 OpenAI 或 Anthropic 兼容网关（如公司内部代理）。用于语音优化和长按问 AI；语音识别仍用上面选的服务商。",
+                             size: 11.5, weight: .medium, color: theme.text2)
+            note.maximumNumberOfLines = 0
+            container.addArrangedSubview(note)
+            note.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let formatSeg = VPSegmentedControl(
+                labels: ["OpenAI 兼容", "Anthropic 兼容"],
+                trackBg: theme.cardAlt, trackBorder: theme.sep, selBg: theme.segSelBg, selBorder: theme.sep,
+                selText: theme.text, normalText: theme.text2,
+                target: self, action: #selector(customFormatChanged(_:)))
+            formatSeg.selectedSegment = AIPolisher.Custom.isAnthropic(config: config) ? 1 : 0
+            let formatStack = NSStackView()
+            formatStack.orientation = .vertical
+            formatStack.alignment = .leading
+            formatStack.spacing = 5
+            formatStack.addArrangedSubview(label("接口格式", size: 12.5, weight: .medium, color: theme.text2))
+            formatStack.addArrangedSubview(formatSeg)
+            formatSeg.widthAnchor.constraint(equalTo: formatStack.widthAnchor).isActive = true
+            container.addArrangedSubview(formatStack)
+            formatStack.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let urlField = makeTextField(config.string(forKey: AIPolisher.Custom.baseURLKey), mono: true)
+            urlField.identifier = NSUserInterfaceItemIdentifier("polishcfg:" + AIPolisher.Custom.baseURLKey)
+            urlField.delegate = self
+            let urlRow = makeFieldRow(label: "接口地址", control: urlField,
+                                      placeholder: "https://your-gateway.example.com/v1")
+            container.addArrangedSubview(urlRow)
+            urlRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            let endpointHint = label("", size: 11.5, weight: .regular, color: theme.text3)
+            endpointHint.maximumNumberOfLines = 0
+            customEndpointLabel = endpointHint
+            container.addArrangedSubview(endpointHint)
+            endpointHint.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            refreshCustomEndpointLabel()
+
+            let keyRow = makeFieldRow(label: "API Key（可选）", control: byokKeyFields[AIPolisher.Custom.providerID]!,
+                                      placeholder: "网关不需要鉴权就留空")
+            container.addArrangedSubview(keyRow)
+            keyRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+            let modelField = makeTextField(config.string(forKey: AIPolisher.Custom.modelKey), mono: true)
+            modelField.identifier = NSUserInterfaceItemIdentifier("polishcfg:" + AIPolisher.Custom.modelKey)
+            modelField.delegate = self
+            let modelRow = makeFieldRow(label: "模型", control: modelField,
+                                        placeholder: "必填，网关认的模型名")
+            container.addArrangedSubview(modelRow)
+            modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            polishGetKeyButton?.isHidden = true
             polishTestButton?.isEnabled = true
             polishTestButton?.title = "▷ 测试连接"
         default: // doubao
@@ -4762,6 +4911,29 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             polishGetKeyButton?.identifier = NSUserInterfaceItemIdentifier("https://console.volcengine.com/ark")
             polishTestButton?.isEnabled = true
             polishTestButton?.title = "▷ 测试连接"
+        }
+    }
+
+    @objc private func customFormatChanged(_ sender: VPSegmentedControl) {
+        config.save(value: sender.selectedSegment == 1 ? AIPolisher.Custom.anthropicFormat : "openai",
+                    forKey: AIPolisher.Custom.formatKey)
+        polishTestResultLabel?.stringValue = ""
+        refreshCustomEndpointLabel()
+    }
+
+    /// 自定义服务商：把会真正请求的地址写出来，填错（没写 https://）当场看得见
+    private func refreshCustomEndpointLabel() {
+        guard let hint = customEndpointLabel else { return }
+        let base = (config.string(forKey: AIPolisher.Custom.baseURLKey) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if base.isEmpty {
+            hint.textColor = theme.text3
+            hint.stringValue = "填 base URL（如 https://…/v1）即可，会自动补上 /chat/completions 或 /messages"
+        } else if let url = AIPolisher.Custom.endpoint(base: base, anthropic: AIPolisher.Custom.isAnthropic(config: config)) {
+            hint.textColor = theme.text3
+            hint.stringValue = "实际请求：\(url.absoluteString)"
+        } else {
+            hint.textColor = theme.danger
+            hint.stringValue = "地址无效：需以 https:// 或 http:// 开头"
         }
     }
 
@@ -5401,6 +5573,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             guard let f = byokKeyFields[p.id] else { continue }
             secretOK = config.saveSecret(f.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: p.keyConfigKey) && secretOK
         }
+        if let f = asrKeyFields[.custom] {
+            secretOK = config.saveSecret(f.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: CloudASRTranscriber.LLMASR.customKeyKey) && secretOK
+        }
+        if let f = byokKeyFields[AIPolisher.Custom.providerID] {
+            secretOK = config.saveSecret(f.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: AIPolisher.Custom.apiKeyKey) && secretOK
+        }
         config.save(values: ["polish_provider": polishProviderControl.map { polishProvider(forSegment: $0.selectedSegment) } ?? "qwen"])
         if !secretOK {
             presentHistoryActionResult(success: false, message: "API Key 保存到钥匙串失败，请重试")
@@ -5410,6 +5588,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     }
 
     @objc private func testRecognitionConnection() {
+        window?.makeFirstResponder(nil)   // 先结束编辑，让正在填的 Key / 地址 / 模型存下
         persistModelFields()
         asrTestButton?.isEnabled = false
         asrTestResultLabel?.textColor = theme.text3
@@ -5444,6 +5623,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     @objc private func testPolishConnection() {
         let provider = polishProviderControl.map { polishProvider(forSegment: $0.selectedSegment) } ?? "qwen"
         guard provider != "none" else { return }
+        // 光标还在地址 / 模型框里就点测试：先结束编辑，让 controlTextDidEndEditing 把刚填的值存下
+        window?.makeFirstResponder(nil)
         persistModelFields()
         polishTestButton?.isEnabled = false
         polishTestResultLabel?.textColor = theme.text3
@@ -5472,10 +5653,18 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             saveOutputLanguagePhrases(id: String(id.dropFirst(6)), text: field.stringValue)
             return
         }
-        if let id = field.identifier?.rawValue, id.hasPrefix("pmodel:") {
-            config.save(value: field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: String(id.dropFirst(7)))
+        if let id = field.identifier?.rawValue, id.hasPrefix("polishcfg:") {
+            config.save(value: field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: String(id.dropFirst(10)))
             polishTestResultLabel?.stringValue = ""
+            asrTestResultLabel?.stringValue = ""
+            refreshCustomEndpointLabel()
+            refreshCustomASREndpointLabel()
             return
+        }
+        // 识别与优化的 OpenAI / Gemini Key 框联动（同一个 Key），保存时两边一致
+        for (provider, polishID) in [(CloudASRTranscriber.ASRProvider.openai, "openai"), (.gemini, "gemini")] {
+            if field === asrKeyFields[provider] { byokKeyFields[polishID]?.stringValue = field.stringValue }
+            if field === byokKeyFields[polishID] { asrKeyFields[provider]?.stringValue = field.stringValue }
         }
         // 识别(百炼)与优化(通义千问)的 DashScope Key 框联动，保持一致
         if field === bailianKeyField {
@@ -5489,7 +5678,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             bailianKeyField?.stringValue = field.stringValue
         }
         let modelFields: [NSTextField?] = [bigASRAPIKeyField, bailianKeyField,
-                                           dashscopeAPIKeyField, arkAPIKeyField] + byokKeyFields.values.map { $0 }
+                                           dashscopeAPIKeyField, arkAPIKeyField]
+            + byokKeyFields.values.map { $0 } + asrKeyFields.values.map { $0 }
         guard modelFields.contains(where: { $0 === field }) else { return }
         persistModelFields()
     }
@@ -6860,10 +7050,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
         let logoBox = makeWaveformMark(box: 64, corner: 16, boxColor: theme.accent, waveColor: theme.onAccent)
 
-        let name = label("Typefree", size: 22, weight: .semibold, color: theme.text)
-        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
-            ?? Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        let info = Bundle.main.infoDictionary
+        let name = label(info?["CFBundleDisplayName"] as? String ?? "Typefree", size: 22, weight: .semibold, color: theme.text)
+        var version = info?["CFBundleShortVersionString"] as? String
+            ?? info?["CFBundleVersion"] as? String
             ?? "本地开发版"
+        // scripts/run-debug.sh 打的标：Debug 版写成「3.0.14 Debug (build 123)」，和正式版一眼区分
+        if info?["TypefreeBuildChannel"] as? String == "Debug" {
+            version += " Debug (build \(info?["CFBundleVersion"] as? String ?? "?"))"
+        }
         let sub = label("\(version) · macOS 状态栏应用", size: 13, weight: .regular, color: theme.text3)
 
         let logoStack = NSStackView()
@@ -7102,6 +7297,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let provider = config.string(forKey: "polish_provider") ?? "qwen"
         if let p = AIPolisher.byokProvider(provider) {
             return !(config.string(forKey: p.keyConfigKey, envKey: p.envKey) ?? "").isEmpty
+        }
+        if provider == AIPolisher.Custom.providerID {
+            return AIPolisher.Custom.isConfigured(config: config)   // Key 可空，地址和模型必填
         }
         switch provider {
         case "qwen":

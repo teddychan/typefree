@@ -6,12 +6,29 @@ public final class CloudASRTranscriber {
     public enum ASRProvider {
         case volcano   // 火山引擎
         case bailian   // 阿里百炼（DashScope）
+        case openai    // OpenAI /audio/transcriptions
+        case gemini    // Gemini：音频直接喂给模型（OpenAI 兼容 chat/completions）
+        case custom    // 自填地址的 OpenAI 兼容 /audio/transcriptions 网关
 
         /// 与设置页「语音识别」服务商选项一致
         public var displayName: String {
             switch self {
             case .volcano: return "火山引擎"
             case .bailian: return "百炼"
+            case .openai: return "OpenAI"
+            case .gemini: return "Gemini"
+            case .custom: return "自定义"
+            }
+        }
+
+        /// 选中这家服务商时用的识别版本（火山有三档，由设置页另选）
+        public var defaultVersion: ASRVersion {
+            switch self {
+            case .volcano: return .turbo
+            case .bailian: return .bailian
+            case .openai: return .openai
+            case .gemini: return .gemini
+            case .custom: return .custom
             }
         }
     }
@@ -29,11 +46,17 @@ public final class CloudASRTranscriber {
         case standard   // 火山标准版 1.0：异步 submit + 轮询 query
         case v2         // 火山 2.0(seedasr)：异步 submit + 轮询 query
         case bailian    // 百炼 qwen3-asr-flash：同步 OpenAI 兼容接口
+        case openai     // OpenAI：同步，模型可在设置里改
+        case gemini     // Gemini：同步，模型可在设置里改
+        case custom     // 自定义网关：同步，模型必填
 
         public var provider: ASRProvider {
             switch self {
             case .turbo, .standard, .v2: return .volcano
             case .bailian: return .bailian
+            case .openai: return .openai
+            case .gemini: return .gemini
+            case .custom: return .custom
             }
         }
 
@@ -43,7 +66,7 @@ public final class CloudASRTranscriber {
             case .turbo: return "volc.bigasr.auc_turbo"
             case .standard: return "volc.bigasr.auc"
             case .v2: return "volc.seedasr.auc"
-            case .bailian: return ""
+            case .bailian, .openai, .gemini, .custom: return ""
             }
         }
 
@@ -51,13 +74,16 @@ public final class CloudASRTranscriber {
             switch self {
             case .turbo, .standard, .v2: return resourceID
             case .bailian: return "qwen3-asr-flash"
+            case .openai: return LLMASR.openAIDefaultModel
+            case .gemini: return LLMASR.geminiDefaultModel
+            case .custom: return "custom"
             }
         }
 
         /// true = 同步一步出结果（极速版、百炼）；false = 异步 submit/query（火山标准版/2.0）
         public var isSync: Bool {
             switch self {
-            case .turbo, .bailian: return true
+            case .turbo, .bailian, .openai, .gemini, .custom: return true
             case .standard, .v2: return false
             }
         }
@@ -69,6 +95,7 @@ public final class CloudASRTranscriber {
             case .standard: return "标准版"
             case .v2: return "2.0"
             case .bailian: return "百炼"
+            case .openai, .gemini, .custom: return provider.displayName
             }
         }
 
@@ -78,7 +105,7 @@ public final class CloudASRTranscriber {
             case .turbo: return .standard
             case .standard: return .v2
             case .v2: return .bailian
-            case .bailian: return nil
+            case .bailian, .openai, .gemini, .custom: return nil
             }
         }
     }
@@ -158,6 +185,7 @@ public final class CloudASRTranscriber {
         switch version.provider {
         case .volcano: return volcanoCredentials() != nil
         case .bailian: return dashscopeAPIKey() != nil
+        case .openai, .gemini, .custom: return Self.llmASRSettings(for: version.provider, config: config) != nil
         }
     }
 
@@ -165,7 +193,14 @@ public final class CloudASRTranscriber {
     public func ownKeyIssue() -> OwnKeyIssue? {
         let version = currentVersion()
         guard !isConfigured(version: version) else { return nil }
-        let secretKeys = version.provider == .volcano ? ["bigasr_api_key", "bigasr_access_token"] : ["dashscope_api_key"]
+        let secretKeys: [String]
+        switch version.provider {
+        case .volcano: secretKeys = ["bigasr_api_key", "bigasr_access_token"]
+        case .bailian: secretKeys = ["dashscope_api_key"]
+        case .openai: secretKeys = [LLMASR.openAIKeyKey]
+        case .gemini: secretKeys = [LLMASR.geminiKeyKey]
+        case .custom: secretKeys = [LLMASR.customKeyKey]
+        }
         if secretKeys.contains(where: { config.secretUnreadable(forKey: $0) }) { return .keychainUnreadable }
         switch version.provider {
         case .volcano where dashscopeAPIKey() != nil:
@@ -368,6 +403,25 @@ public final class CloudASRTranscriber {
             }
             debugLog?("Cloud ASR: version=\(version.rawValue) provider=bailian model=\(Self.bailianModel) audio=\(audioFormat)/\(audioData.count / 1024)KB budget=\(Int(budget))s")
             transcribeBailian(audioData: audioData, format: audioFormat, apiKey: apiKey, budgetSeconds: budget, completion: completion)
+        case .openai, .custom:
+            guard let settings = Self.llmASRSettings(for: version.provider, config: config) else {
+                completion(.failure(TranscriptionError.missingCredentials))
+                return
+            }
+            debugLog?("Cloud ASR: provider=\(version.rawValue) model=\(settings.model) url=\(settings.url.host ?? "?") audio=\(audioFormat)/\(audioData.count / 1024)KB budget=\(Int(budget))s")
+            transcribeOpenAIStyle(audioData: audioData, format: audioFormat, settings: settings, budgetSeconds: budget, completion: completion)
+        case .gemini:
+            // Gemini 的 OpenAI 兼容接口只认 WAV（文档只写了 wav），不能用上面压好的 m4a
+            guard let settings = Self.llmASRSettings(for: .gemini, config: config) else {
+                completion(.failure(TranscriptionError.missingCredentials))
+                return
+            }
+            guard let wav = WAVEncoder.makeWAVData(from: samples, sampleRate: sampleRate), !wav.isEmpty else {
+                completion(.failure(TranscriptionError.invalidAudio))
+                return
+            }
+            debugLog?("Cloud ASR: provider=gemini model=\(settings.model) audio=wav/\(wav.count / 1024)KB budget=\(Int(budget))s")
+            transcribeGemini(wavData: wav, settings: settings, budgetSeconds: budget, completion: completion)
         }
     }
 
