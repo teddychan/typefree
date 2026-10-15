@@ -111,11 +111,52 @@ public class AIPolisher {
         }
     }
 
+    /// 自带 Key 的海外服务商（OpenAI / Gemini / Claude）：只用于润色和问 AI，识别仍走火山 / 百炼。
+    /// OpenAI、Gemini 走各自官方的 OpenAI 兼容 chat/completions；Claude 走 Anthropic 原生 Messages API。
+    /// 模型可在设置里改成任意 ID，留空回落 defaultModel（2026-10 各家文档里的快速档）。
+    public struct BYOKProvider {
+        public let id: String              // polish_provider 的取值
+        public let keyConfigKey: String
+        public let envKey: String
+        public let modelConfigKey: String
+        public let defaultModel: String
+        public let consoleURL: String
+        let url: URL
+    }
+
+    public static let byokProviders: [BYOKProvider] = [
+        BYOKProvider(id: "openai", keyConfigKey: "openai_api_key", envKey: "OPENAI_API_KEY",
+                     modelConfigKey: "openai_polish_model", defaultModel: "gpt-6-luna",
+                     consoleURL: "https://platform.openai.com/api-keys",
+                     url: URL(string: "https://api.openai.com/v1/chat/completions")!),
+        BYOKProvider(id: "gemini", keyConfigKey: "gemini_api_key", envKey: "GEMINI_API_KEY",
+                     modelConfigKey: "gemini_polish_model", defaultModel: "gemini-3.8-flash",
+                     consoleURL: "https://aistudio.google.com/apikey",
+                     url: URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")!),
+        BYOKProvider(id: "claude", keyConfigKey: "anthropic_api_key", envKey: "ANTHROPIC_API_KEY",
+                     modelConfigKey: "claude_polish_model", defaultModel: "claude-haiku-5-5",
+                     consoleURL: "https://console.anthropic.com/settings/keys",
+                     url: URL(string: "https://api.anthropic.com/v1/messages")!),
+    ]
+
+    public static func byokProvider(_ id: String?) -> BYOKProvider? {
+        byokProviders.first { $0.id == id }
+    }
+
+    /// 设置里填的模型；没填（或只填了空格）用默认模型。
+    public static func configuredModel(for provider: BYOKProvider, config: VoicePolishConfig = .shared) -> String {
+        let saved = config.string(forKey: provider.modelConfigKey)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return saved.isEmpty ? provider.defaultModel : saved
+    }
+
     public static func currentPolishSelection() -> PolishSelection {
         let config = VoicePolishConfig.shared
         let provider = config.string(forKey: "polish_provider") ?? "qwen"
         if isPolishDisabled(provider: provider) {
             return PolishSelection(provider: "none", model: nil)
+        }
+        if let byok = byokProvider(provider) {
+            return PolishSelection(provider: byok.id, model: configuredModel(for: byok, config: config))
         }
         switch provider {
         case "qwen":
@@ -461,6 +502,12 @@ public class AIPolisher {
         let config = VoicePolishConfig.shared
         let provider = config.string(forKey: "polish_provider") ?? "qwen"
 
+        if let byok = Self.byokProvider(provider) {
+            guard let key = config.string(forKey: byok.keyConfigKey, envKey: byok.envKey),
+                  !key.isEmpty else { return nil }
+            return (byok.id, byok.url, Self.configuredModel(for: byok, config: config), key)
+        }
+
         switch provider {
         case "qwen":
             guard let key = config.string(forKey: "dashscope_api_key", envKey: "DASHSCOPE_API_KEY"),
@@ -511,14 +558,18 @@ public class AIPolisher {
         let userPrompt = Self.makeCloudASRPolishUserPrompt(for: text, outputLanguage: outputLanguage)
 
         func makeBody(_ model: String) -> [String: Any] {
-            var body: [String: Any] = [
-                "model": model,
-                "messages": [
-                    ["role": "system", "content": systemPrompt],
-                    ["role": "user", "content": userPrompt]
-                ]
+            let messages: [[String: Any]] = [
+                ["role": "system", "content": systemPrompt],
+                ["role": "user", "content": userPrompt]
             ]
-            if provider.name == "qwen" {
+            if provider.name == "claude" {
+                return Self.anthropicBody(model: model, messages: messages, maxTokens: 2000, stream: false)
+            }
+            var body: [String: Any] = ["model": model, "messages": messages]
+            if provider.name == "openai" || provider.name == "gemini" {
+                // 两家新模型都是推理模型：不收 temperature；推理强度压到 low（两家所有档位都接受的最低一档），润色要快
+                body["reasoning_effort"] = "low"
+            } else if provider.name == "qwen" {
                 body["top_p"] = 0.8
                 body["temperature"] = 0.7
                 body["result_format"] = "message"
@@ -554,7 +605,7 @@ public class AIPolisher {
             attemptQwenPolish(candidates: candidates, url: provider.url, apiKey: provider.apiKey,
                               makeBody: makeBody, completion: finish)
         } else {
-            callChatCompletionsWithTokens(url: provider.url, apiKey: provider.apiKey,
+            callChatCompletionsWithTokens(url: provider.url, apiKey: provider.apiKey, provider: provider.name,  // secret-scan:allow (variable, not a key)
                                           body: makeBody(provider.model), completion: finish)
         }
     }
@@ -631,10 +682,55 @@ public class AIPolisher {
 
     // MARK: - HTTP 调用
 
-    private func callChatCompletionsWithTokens(url: URL, apiKey: String, body: [String: Any], completion: @escaping (Result<(String, Int, Int), Error>) -> Void) {
+    /// Claude 用 x-api-key + anthropic-version；其余（含 OpenAI / Gemini 兼容接口）用 Bearer。
+    static func authorize(_ request: inout URLRequest, provider: String, apiKey: String) {
+        if provider == "claude" {
+            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+        } else {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+    }
+
+    /// OpenAI 风格的 messages 转成 Anthropic Messages API 请求体：system 角色提到顶层 system 字段。
+    static func anthropicBody(model: String, messages: [[String: Any]], maxTokens: Int, stream: Bool) -> [String: Any] {
+        let system = messages.filter { $0["role"] as? String == "system" }
+            .compactMap { $0["content"] as? String }.joined(separator: "\n\n")
+        var body: [String: Any] = [
+            "model": model,
+            "max_tokens": maxTokens,
+            "messages": messages.filter { $0["role"] as? String != "system" }
+        ]
+        if !system.isEmpty { body["system"] = system }
+        if stream { body["stream"] = true }
+        return body
+    }
+
+    /// 取出回答正文和 token 用量：OpenAI 兼容的 choices[0].message.content，或 Anthropic 的 content[].text。
+    static func parseCompletion(_ json: [String: Any]) -> (String, Int, Int)? {
+        let usage = json["usage"] as? [String: Any]
+        if let content = ((json["choices"] as? [[String: Any]])?.first?["message"] as? [String: Any])?["content"] as? String {
+            return (content.trimmingCharacters(in: .whitespacesAndNewlines),
+                    usage?["prompt_tokens"] as? Int ?? 0, usage?["completion_tokens"] as? Int ?? 0)
+        }
+        if let blocks = json["content"] as? [[String: Any]] {
+            let text = blocks.filter { $0["type"] as? String == "text" }
+                .compactMap { $0["text"] as? String }.joined()
+            return (text.trimmingCharacters(in: .whitespacesAndNewlines),
+                    usage?["input_tokens"] as? Int ?? 0, usage?["output_tokens"] as? Int ?? 0)
+        }
+        return nil
+    }
+
+    /// Gemini 的 OpenAI 兼容接口出错时可能回 [{"error":…}]：取第一个元素，按普通错误对象处理。
+    static func jsonDictionary(_ object: Any?) -> [String: Any]? {
+        (object as? [String: Any]) ?? (object as? [[String: Any]])?.first
+    }
+
+    private func callChatCompletionsWithTokens(url: URL, apiKey: String, provider: String = "", body: [String: Any], completion: @escaping (Result<(String, Int, Int), Error>) -> Void) {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        Self.authorize(&request, provider: provider, apiKey: apiKey)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 60
 
@@ -657,16 +753,9 @@ public class AIPolisher {
             }
 
             do {
-                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                if let json = json,
-                   let choices = json["choices"] as? [[String: Any]],
-                   let firstChoice = choices.first,
-                   let message = firstChoice["message"] as? [String: Any],
-                   let content = message["content"] as? String {
-                    let usage = json["usage"] as? [String: Any]
-                    let inputTokens = usage?["prompt_tokens"] as? Int ?? 0
-                    let outputTokens = usage?["completion_tokens"] as? Int ?? 0
-                    completion(.success((content.trimmingCharacters(in: .whitespacesAndNewlines), inputTokens, outputTokens)))
+                let json = Self.jsonDictionary(try JSONSerialization.jsonObject(with: data))
+                if let json = json, let parsed = Self.parseCompletion(json) {
+                    completion(.success(parsed))
                 } else if let apiMessage = Self.extractAPIErrorMessage(from: json) {
                     // 服务端业务错误：把真实原因带出去，别再吞成 parseError。
                     // 403 单独标为额度类失败（免费额度用完即停/欠费），自动路由靠它降级换模型。
@@ -773,8 +862,13 @@ public class AIPolisher {
         let forceSearch = Self.isTimeSensitive(question)
         debugLog?("Ask provider=\(provider.name) model=\(provider.model) forceSearch=\(forceSearch) history=\(history.count)")
         func makeBody(_ model: String, search: Bool) -> [String: Any] {
+            if provider.name == "claude" {
+                return Self.anthropicBody(model: model, messages: messages, maxTokens: 2000, stream: true)
+            }
             var body: [String: Any] = ["model": model, "messages": messages, "stream": true]
-            if provider.name == "qwen" {
+            if provider.name == "openai" || provider.name == "gemini" {
+                body["reasoning_effort"] = "low"   // 同润色：推理模型不收 temperature
+            } else if provider.name == "qwen" {
                 body["top_p"] = 0.8; body["temperature"] = 0.5; body["enable_thinking"] = false
                 if search {
                     body["enable_search"] = true
@@ -794,7 +888,8 @@ public class AIPolisher {
                 return
             }
             let model = candidates[index]
-            streamChat(url: provider.url, apiKey: provider.apiKey, body: makeBody(model, search: search), onPartial: onPartial) { [weak self] result in
+            streamChat(url: provider.url, apiKey: provider.apiKey, provider: provider.name,  // secret-scan:allow (variable, not a key)
+                       body: makeBody(model, search: search), onPartial: onPartial) { [weak self] result in
                 switch result {
                 case .success(let text):
                     if !text.isEmpty { TrialManager.shared.recordSelfKeyUsage(chars: text.count) }
@@ -822,12 +917,12 @@ public class AIPolisher {
     }
 
     /// OpenAI 兼容的流式对话（SSE）：每收到一段增量就回调累计文本，结束时给完整文本。
-    private func streamChat(url: URL, apiKey: String, body: [String: Any],
+    private func streamChat(url: URL, apiKey: String, provider: String, body: [String: Any],
                             onPartial: ((String) -> Void)?,
                             completion: @escaping (Result<String, Error>) -> Void) {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        Self.authorize(&request, provider: provider, apiKey: apiKey)
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         request.timeoutInterval = 90
@@ -846,6 +941,7 @@ public class AIPolisher {
         private var accumulated = ""
         private var statusCode = 200
         private var errorBody = Data()
+        private var streamError: String?
         private var finished = false
         var session: URLSession?
 
@@ -869,10 +965,18 @@ public class AIPolisher {
                       line.hasPrefix("data:") else { continue }
                 let payload = line.dropFirst(5).trimmingCharacters(in: .whitespaces)
                 if payload == "[DONE]" { continue }
-                guard let json = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any],
-                      let choice = (json["choices"] as? [[String: Any]])?.first else { continue }
-                let piece = ((choice["delta"] as? [String: Any])?["content"] as? String)
-                    ?? ((choice["message"] as? [String: Any])?["content"] as? String)
+                guard let json = try? JSONSerialization.jsonObject(with: Data(payload.utf8)) as? [String: Any] else { continue }
+                let piece: String?
+                if let choice = (json["choices"] as? [[String: Any]])?.first {
+                    piece = ((choice["delta"] as? [String: Any])?["content"] as? String)
+                        ?? ((choice["message"] as? [String: Any])?["content"] as? String)
+                } else if json["type"] as? String == "error" {
+                    // Anthropic 流里途中报错（如过载）：HTTP 仍是 200，错误在事件里
+                    streamError = AIPolisher.extractAPIErrorMessage(from: json)
+                    piece = nil
+                } else {
+                    piece = (json["delta"] as? [String: Any])?["text"] as? String   // Anthropic content_block_delta
+                }
                 if let piece, !piece.isEmpty {
                     accumulated += piece
                     let snapshot = accumulated
@@ -887,12 +991,13 @@ public class AIPolisher {
             finished = true
             if let error { completion(.failure(error)); return }
             guard statusCode == 200 else {
-                let json = try? JSONSerialization.jsonObject(with: errorBody) as? [String: Any]
+                let json = AIPolisher.jsonDictionary(try? JSONSerialization.jsonObject(with: errorBody))
                 let message = AIPolisher.extractAPIErrorMessage(from: json) ?? "HTTP \(statusCode)"
                 completion(.failure(statusCode == 403 ? AIPolisher.classify403(json: json, message: message) : PolishError.apiError(message)))
                 return
             }
             let text = accumulated.trimmingCharacters(in: .whitespacesAndNewlines)
+            if text.isEmpty, let streamError { completion(.failure(PolishError.apiError(streamError))); return }
             completion(text.isEmpty ? .failure(PolishError.parseError) : .success(text))
         }
     }
@@ -1120,13 +1225,16 @@ public class AIPolisher {
         let tag = (code?.isEmpty == false) ? "（\(code!)）" : ""
 
         if c == "invalid_api_key" || c == "invalidapikey" || c == "authenticationerror" || t == "unauthorized"
+            || t == "authentication_error"   // Anthropic
             || m.contains("incorrect api key") || m.contains("api key format is incorrect")
-            || m.contains("didn't provide an api key") || m.contains("invalid api key") {
+            || m.contains("didn't provide an api key") || m.contains("invalid api key")
+            || m.contains("invalid x-api-key") || m.contains("pass a valid api key") {   // Anthropic / Gemini
             return "API Key 无效，请检查是否复制完整\(tag)"
         }
         if c == "arrearage" || c == "accountoverdueerror" || c == "insufficient_quota"
             || m.contains("in good standing") || m.contains("arrearage") || m.contains("overdue")
-            || m.contains("quota exceeded") || m.contains("enough balance") {
+            || m.contains("quota exceeded") || m.contains("enough balance")
+            || m.contains("exceeded your current quota") || m.contains("credit balance is too low") {   // OpenAI·Gemini / Anthropic
             return "账号欠费或免费额度已用完，请到服务商控制台检查\(tag)"
         }
         if c == "quotaexceeded" || c == "ratelimitexceeded" || c == "throttling" || c.hasPrefix("throttling.")

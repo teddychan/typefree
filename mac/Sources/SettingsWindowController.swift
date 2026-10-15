@@ -1121,6 +1121,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     private var asrGetKeyButton: NSButton?
     private var dashscopeAPIKeyField: NSSecureTextField?
     private var arkAPIKeyField: NSSecureTextField?
+    /// OpenAI / Gemini / Claude 的 Key 框，按 provider id 存
+    private var byokKeyFields: [String: NSSecureTextField] = [:]
     private var polishProviderControl: VPSegmentedControl?
     private var polishKeyContainer: NSStackView?
     private var polishGetKeyButton: NSButton?
@@ -4148,6 +4150,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         for field in [dashscopeAPIKeyField, arkAPIKeyField] {
             field?.delegate = self
         }
+        byokKeyFields = [:]
+        for p in AIPolisher.byokProviders {
+            let field = makeSecureField(config.string(forKey: p.keyConfigKey))
+            field.delegate = self
+            byokKeyFields[p.id] = field
+        }
 
         // 首次/未配置时，顶部一句明确的「最后一步」引导（会员、试用中都不用填 Key，不催）
         if !CloudASRTranscriber().isConfigured() && !LicenseManager.shared.hasActiveMembership() && !TrialManager.shared.isInTrial {
@@ -4473,6 +4481,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let current = config.string(forKey: "polish_provider") ?? "qwen"
         // 9-15 Ray：润色只留「百炼 / 不优化」，豆包隐藏；已经选了豆包的老用户仍显示三段
         polishSegProviders = current == "doubao" ? ["qwen", "doubao", "none"] : ["qwen", "none"]
+        polishSegProviders.insert(contentsOf: AIPolisher.byokProviders.map(\.id), at: polishSegProviders.count - 1)
         let seg = VPSegmentedControl(
             labels: polishSegProviders.map { Self.polishProviderLabel($0) },
             trackBg: theme.cardAlt,
@@ -4647,6 +4656,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     private static func polishProviderLabel(_ provider: String) -> String {
         switch provider {
         case "doubao": return "火山引擎（豆包）"
+        case "openai": return "OpenAI"
+        case "gemini": return "Gemini"
+        case "claude": return "Claude"
         case "none": return "不优化"
         default: return "百炼（阿里）"
         }
@@ -4706,6 +4718,29 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
             polishGetKeyButton?.isHidden = false
             polishGetKeyButton?.identifier = NSUserInterfaceItemIdentifier("https://bailian.console.aliyun.com/")
+            polishTestButton?.isEnabled = true
+            polishTestButton?.title = "▷ 测试连接"
+        case let id where AIPolisher.byokProvider(id) != nil:
+            let p = AIPolisher.byokProvider(id)!
+            let name = Self.polishProviderLabel(id)
+            let note = label("用于语音优化和长按问 AI；语音识别仍用上面选的服务商。问 AI 不联网搜索。",
+                             size: 11.5, weight: .medium, color: theme.text2)
+            note.maximumNumberOfLines = 0
+            container.addArrangedSubview(note)
+            note.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            let row = makeFieldRow(label: "\(name) API Key", control: byokKeyFields[id]!,
+                                   placeholder: "请输入 \(name) API Key")
+            container.addArrangedSubview(row)
+            row.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            let modelField = makeTextField(config.string(forKey: p.modelConfigKey), mono: true)
+            modelField.identifier = NSUserInterfaceItemIdentifier("pmodel:" + p.modelConfigKey)
+            modelField.delegate = self
+            let modelRow = makeFieldRow(label: "模型", control: modelField,
+                                        placeholder: "\(p.defaultModel)（留空用默认）")
+            container.addArrangedSubview(modelRow)
+            modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+            polishGetKeyButton?.isHidden = false
+            polishGetKeyButton?.identifier = NSUserInterfaceItemIdentifier(p.consoleURL)
             polishTestButton?.isEnabled = true
             polishTestButton?.title = "▷ 测试连接"
         default: // doubao
@@ -5362,6 +5397,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         if bailianKeyField != nil || dashscopeAPIKeyField != nil {
             secretOK = config.saveSecret(!dsBailian.isEmpty ? dsBailian : dsPolish, forKey: "dashscope_api_key") && secretOK
         }
+        for p in AIPolisher.byokProviders {
+            guard let f = byokKeyFields[p.id] else { continue }
+            secretOK = config.saveSecret(f.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: p.keyConfigKey) && secretOK
+        }
         config.save(values: ["polish_provider": polishProviderControl.map { polishProvider(forSegment: $0.selectedSegment) } ?? "qwen"])
         if !secretOK {
             presentHistoryActionResult(success: false, message: "API Key 保存到钥匙串失败，请重试")
@@ -5433,6 +5472,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             saveOutputLanguagePhrases(id: String(id.dropFirst(6)), text: field.stringValue)
             return
         }
+        if let id = field.identifier?.rawValue, id.hasPrefix("pmodel:") {
+            config.save(value: field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines), forKey: String(id.dropFirst(7)))
+            polishTestResultLabel?.stringValue = ""
+            return
+        }
         // 识别(百炼)与优化(通义千问)的 DashScope Key 框联动，保持一致
         if field === bailianKeyField {
             dashscopeAPIKeyField?.stringValue = field.stringValue
@@ -5445,7 +5489,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             bailianKeyField?.stringValue = field.stringValue
         }
         let modelFields: [NSTextField?] = [bigASRAPIKeyField, bailianKeyField,
-                                           dashscopeAPIKeyField, arkAPIKeyField]
+                                           dashscopeAPIKeyField, arkAPIKeyField] + byokKeyFields.values.map { $0 }
         guard modelFields.contains(where: { $0 === field }) else { return }
         persistModelFields()
     }
@@ -7056,6 +7100,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
     private func isPolishConfigured() -> Bool {
         let provider = config.string(forKey: "polish_provider") ?? "qwen"
+        if let p = AIPolisher.byokProvider(provider) {
+            return !(config.string(forKey: p.keyConfigKey, envKey: p.envKey) ?? "").isEmpty
+        }
         switch provider {
         case "qwen":
             return !(config.string(forKey: "dashscope_api_key", envKey: "DASHSCOPE_API_KEY") ?? "").isEmpty
