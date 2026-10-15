@@ -290,9 +290,12 @@ final class MouseHoldToTalkManager {
         debugLog?("down #\(current.id) at \(TextInputLocator.fmt(point)) app=\(current.appName)")
 
         let pressID = current.id
-        axQueue.asyncAfter(deadline: .now() + MouseHoldToTalkSettings.warmUpDelay) { [weak self] in
-            guard let self, self.pressIsAlive(pressID) else { return }
-            TextInputLocator.warmUp(point: point, pid: pid)
+        // 自家窗口不预热：预热在后台队列跑，会碰到引导窗里的 WKWebView（见 decide 里的说明）
+        if pid != ownPID {
+            axQueue.asyncAfter(deadline: .now() + MouseHoldToTalkSettings.warmUpDelay) { [weak self] in
+                guard let self, self.pressIsAlive(pressID) else { return }
+                TextInputLocator.warmUp(point: point, pid: pid)
+            }
         }
 
         let work = DispatchWorkItem { [weak self] in self?.decide(pressID: pressID) }
@@ -574,6 +577,15 @@ final class MouseHoldToTalkManager {
         let point = current.downPoint
         let pid = current.pid
         let bundleID = current.bundleID
+        // 按在自家窗口（新功能引导 / 设置窗）上：对本进程的 AX 查询不走跨进程消息，而是在调用线程上
+        // 直接进本进程的视图树。引导窗里有 WKWebView，后台线程碰它会被 WebKit 当场杀掉（macOS 27 实测崩溃），
+        // 所以自家窗口改在主线程查——进程内调用，很快。
+        if pid == ProcessInfo.processInfo.processIdentifier {
+            let verdict = TextInputLocator.classify(point: point, pid: pid, bundleID: bundleID) { [weak self] in self?.debugLog?("  \($0)") }
+            debugLog?("verdict #\(pressID) \(verdict.debugName) (own window, main thread)")
+            applyVerdict(verdict, pressID: pressID)
+            return
+        }
         axQueue.async { [weak self] in
             let started = ProcessInfo.processInfo.systemUptime
             var lines: [String] = []
