@@ -7055,7 +7055,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         var version = info?["CFBundleShortVersionString"] as? String
             ?? info?["CFBundleVersion"] as? String
             ?? "本地开发版"
-        // scripts/run-debug.sh 打的标：Debug 版写成「3.0.14 Debug (build 123)」，和正式版一眼区分
+        // fork 自定义版号：mac/CUSTOM_BUILD 由构建脚本写进 TypefreeCustomBuild → 「3.0.13-custom-1」
+        if let customBuild = info?["TypefreeCustomBuild"] as? String, !customBuild.isEmpty {
+            version += "-custom-\(customBuild)"
+        }
+        // scripts/run-debug.sh 打的标：Debug 版再加「Debug (build 123)」，和正式版一眼区分
         if info?["TypefreeBuildChannel"] as? String == "Debug" {
             version += " Debug (build \(info?["CFBundleVersion"] as? String ?? "?"))"
         }

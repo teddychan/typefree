@@ -48,6 +48,16 @@ short_version="$("$pb" -c "Print :CFBundleShortVersionString" "$plist")"
 }
 "$pb" -c "Set :TypefreeBuildChannel Debug" "$plist" 2>/dev/null \
   || "$pb" -c "Add :TypefreeBuildChannel string Debug" "$plist"
+
+# Fork build counter (mac/CUSTOM_BUILD): bumped by one for every custom release, never reset.
+# Shown in About as "<upstream version>-custom-<N>"; the git tag is v<upstream version>-custom-<N>.
+custom_build="$(tr -d '[:space:]' < CUSTOM_BUILD)"
+[[ "$custom_build" =~ ^[1-9][0-9]*$ ]] || {
+  echo "error: mac/CUSTOM_BUILD must hold a positive integer, got: '$custom_build'" >&2
+  exit 1
+}
+"$pb" -c "Set :TypefreeCustomBuild $custom_build" "$plist" 2>/dev/null \
+  || "$pb" -c "Add :TypefreeCustomBuild string $custom_build" "$plist"
 # Never let Sparkle replace this build with the official release, automatically or via "检查更新…".
 "$pb" -c "Set :SUEnableAutomaticChecks false" "$plist"
 "$pb" -c "Set :SUAutomaticallyUpdate false" "$plist"
@@ -68,7 +78,7 @@ open -n "$app"
 
 cat <<EOF
 
-Launched "$DEBUG_NAME" v$short_version Debug (build $build_number, $commit)
+Launched "$DEBUG_NAME" v$short_version-custom-$custom_build Debug (build $build_number, $commit)
   id:   $DEBUG_ID
   path: $app
 
