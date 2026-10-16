@@ -22,7 +22,7 @@ extension UITranslationTable {
 {} 条新回复	{} new replies	{} 則新回覆
 查看更新历史	View Release Notes	查看更新紀錄
 创世用户	Founding User	創始使用者
-3.0 之前就支持 Typefree 的用户，谢谢你一路同行	You supported Typefree before 3.0 — thank you for coming along on the journey	3.0 之前就支持 Typefree 的使用者，謝謝你一路同行
+3.0 之前就支持 Handfree 的用户，谢谢你一路同行	You supported Handfree before 3.0 — thank you for coming along on the journey	3.0 之前就支持 Handfree 的使用者，謝謝你一路同行
 查看新版本	View New Version	查看新版本
 更新历史	Release Notes	更新紀錄
 正在获取…	Loading…	正在取得…
@@ -33,7 +33,7 @@ yyyy年M月d日	MMM d, yyyy	yyyy年M月d日
 有新版本，点击查看	New version available — click to view	有新版本，點擊查看
 麦克风就绪	Microphone ready	麥克風就緒
 未授权麦克风	Microphone not authorized	未授權麥克風
-TYPEFREE / 首页	TYPEFREE / HOME	TYPEFREE / 首頁
+HANDFREE / 首页	HANDFREE / HOME	HANDFREE / 首頁
 自然说话，清楚输入。这是你的语音工作台。	Speak naturally, type clearly. This is your voice workspace.	自然說話，清楚輸入。這是你的語音工作台。
 今日	Today	今日
 {} 次会话	{} sessions	{} 次工作階段
@@ -88,7 +88,7 @@ TYPEFREE / 首页	TYPEFREE / HOME	TYPEFREE / 首頁
 已用	Used	已用
 额度说明	Quota details	額度說明
 试用 7 天内共 {} 字，不按天重置；用完或满 7 天试用结束	{} characters total during the 7-day trial, not reset daily. The trial ends when they're used up or after 7 days.	試用 7 天內共 {} 字，不按天重置；用完或滿 7 天試用結束
-Typefree · 自然说话，清楚输入	Typefree · Speak naturally, type clearly	Typefree · 自然說話，清楚輸入
+Handfree · 自然说话，清楚输入	Handfree · Speak naturally, type clearly	Handfree · 自然說話，清楚輸入
 开源	Open Source	開源
 软件开源、永久免费；会员买的是免配置的识别和润色服务	The app is open source and free forever; membership pays for zero-setup recognition and cleanup	軟體開源、永久免費；會員購買的是免設定的辨識和潤飾服務
 查看源码 →	View Source →	查看原始碼 →
@@ -147,7 +147,7 @@ Typefree · 自然说话，清楚输入	Typefree · Speak naturally, type clearl
 激活中…	Activating…	啟用中…
 正在激活…	Activating…	正在啟用…
 授权码无效，请检查是否复制完整	Invalid license code — make sure you copied all of it	授權碼無效，請檢查是否完整複製
-这个授权码已在另一台 Mac 上激活。换新机请到 typefree.app/recover 重置后再试。	This license code is already activated on another Mac. If you've switched Macs, reset it at typefree.app/recover and try again.	這個授權碼已在另一台 Mac 上啟用。換新機請到 typefree.app/recover 重置後再試。
+这个授权码已在另一台 Mac 上激活。	This license code is already activated on another Mac.	這個授權碼已在另一台 Mac 上啟用。
 激活失败：{}	Activation failed: {}	啟用失敗：{}
 会员 · 免配置，用我们提供的	Member · No setup, uses our service	會員 · 免設定，使用我們提供的服務
 试用中 · 用我们提供的	On Trial · Uses our service	試用中 · 使用我們提供的服務
@@ -183,14 +183,14 @@ AI 润色	AI Cleanup	AI 潤飾
 点击申请麦克风权限	Click to request microphone access	點一下申請麥克風權限
 待授权	Pending	待授權
 未知状态	Unknown	未知狀態
-TYPEFREE / 探索	TYPEFREE / EXPLORE	TYPEFREE / 探索
+HANDFREE / 探索	HANDFREE / EXPLORE	HANDFREE / 探索
 发现新的输入和表达方式，按需开启。	Discover new ways to type and express yourself. Turn on what you need.	發現新的輸入與表達方式，依需求開啟。
 语音翻译	Voice Translation	語音翻譯
 把说出的话翻译成指定语言，直接输入。	Translate what you say into a chosen language and type it directly.	把說出的話翻譯成指定語言，直接輸入。
 语言与口令设置	Language & Voice Command Settings	語言與語音指令設定
 查看使用方法	How to Use	查看使用方法
 收起说明	Hide Instructions	收合說明
-TYPEFREE / 设置	TYPEFREE / SETTINGS	TYPEFREE / 設定
+HANDFREE / 设置	HANDFREE / SETTINGS	HANDFREE / 設定
 管理启动、音频、快捷键和权限。	Manage startup, audio, shortcuts, and permissions.	管理啟動、音訊、快速鍵和權限。
 启动	Startup	啟動
 外观	Appearance	外觀
@@ -210,7 +210,7 @@ TYPEFREE / 设置	TYPEFREE / SETTINGS	TYPEFREE / 設定
 录音提示音	Recording Sounds	錄音提示音
 开始收音和结束录音时各响一声轻音，不用看屏幕也知道录上了。	Plays a soft chime when recording starts and stops, so you know it’s listening without looking at the screen.	開始收音和結束錄音時各響一聲輕音，不用看螢幕也知道錄上了。
 在 Dock 中显示	Show in Dock	在 Dock 中顯示
-关闭后 Dock 和 ⌘Tab 里不再出现 Typefree，可从屏幕顶部菜单栏的图标打开。	When off, Typefree no longer appears in the Dock or ⌘Tab; open it from its icon in the menu bar at the top of the screen.	關閉後 Dock 和 ⌘Tab 裡不再出現 Typefree，可從螢幕頂端選單列的圖示開啟。
+关闭后 Dock 和 ⌘Tab 里不再出现 Handfree，可从屏幕顶部菜单栏的图标打开。	When off, Handfree no longer appears in the Dock or ⌘Tab; open it from its icon in the menu bar at the top of the screen.	關閉後 Dock 和 ⌘Tab 裡不再出現 Handfree，可從螢幕頂端選單列的圖示開啟。
 请输入豆包 API Key	Enter your Doubao API Key	請輸入豆包 API Key
 识别版本	Recognition Edition	辨識版本
 极速版	Turbo	極速版
@@ -239,7 +239,7 @@ Qwen3-ASR-1.7B，完全在本机运行，不用填任何东西。首次会自动
 填 base URL（如 https://…/v1）即可，会自动补上 /audio/transcriptions	Just enter the base URL (e.g. https://…/v1); /audio/transcriptions is added automatically	填入 base URL（例如 https://…/v1）即可，會自動補上 /audio/transcriptions
 实际请求：{}	Actual request: {}	實際請求：{}
 地址无效：需以 https:// 或 http:// 开头	Invalid URL: must start with https:// or http://	網址無效：需以 https:// 或 http:// 開頭
-TYPEFREE / 模型	TYPEFREE / MODELS	TYPEFREE / 模型
+HANDFREE / 模型	HANDFREE / MODELS	HANDFREE / 模型
 模型设置	Model Settings	模型設定
 用你自己的 API。语音直连你选的服务商，没有中间商；历史记录只存在你本机。	Use your own API. Your voice goes straight to the provider you choose, with no middleman; history is stored only on your Mac.	使用你自己的 API。語音直連你選的服務商，沒有中間商；歷史紀錄只存在你的本機。
 优先走会员服务	Prefer Membership Service	優先使用會員服務
@@ -296,7 +296,7 @@ qwen3.6-flash · 最快	qwen3.6-flash · Fastest	qwen3.6-flash · 最快
 改过的词自动进词库	Add Corrected Words to Vocabulary	修正過的詞自動加入詞庫
 识别错的词你改过一次，就会加进词库，下次优先认对。学到时会提示，可以撤销；从词库删掉的词不会再自动加回来。	Once you correct a misrecognized word, it’s added to your vocabulary so it’s recognized correctly next time. You’ll be notified when a word is learned and can undo it; words you delete from your vocabulary won’t be added back automatically.	辨識錯的詞你修正過一次，就會加進詞庫，下次優先辨識正確。學到時會提示，可以復原；從詞庫刪除的詞不會再自動加回來。
 开机时自动启动	Launch at Login	登入時自動啟動
-登录后自动在后台打开 Typefree，不用每次手动启动。	Automatically opens Typefree in the background after you log in, so you don’t have to start it manually.	登入後自動在背景開啟 Typefree，不用每次手動啟動。
+登录后自动在后台打开 Handfree，不用每次手动启动。	Automatically opens Handfree in the background after you log in, so you don’t have to start it manually.	登入後自動在背景開啟 Handfree，不用每次手動啟動。
 鼠标长按说话	Hold Mouse to Talk	滑鼠長按說話
 在输入框里按住鼠标说话，松开后自动输入。	Press and hold the mouse in a text field to talk; release to type it in.	在輸入框裡按住滑鼠說話，放開後自動輸入。
 开始说话：在输入框上按住鼠标左键约半秒，松开即结束。\n\n锁定录音：向下拖动，或移到胶囊内及边缘附近。绿光亮起后松手继续说，点 ✓ 完成、× 取消。\n\n拖开取消：按住鼠标拖远，红光亮起后松手取消；移回胶囊可恢复锁定。锁定后，也可重新按住胶囊向外拖动取消。普通移动鼠标不会取消录音。\n\n微信：仅在聊天主窗口底部输入区域的左半部分生效，会接管微信自带的按住语音输入。触控板不建议开启。	Start talking: press and hold the left mouse button on a text field for about half a second; release to finish.\n\nLock recording: drag down, or move into or near the edge of the capsule. When the green glow lights up, let go and keep talking; click ✓ to finish or × to cancel.\n\nDrag away to cancel: hold and drag the mouse far away; when the red glow lights up, let go to cancel. Move back to the capsule to restore the lock. Once locked, you can also press and hold the capsule again and drag outward to cancel. Moving the mouse normally won't cancel recording.\n\nWeChat: works only in the left half of the input area at the bottom of the main chat window, and takes over WeChat's built-in hold-to-talk voice input. Not recommended for trackpads.	開始說話：在輸入框上按住滑鼠左鍵約半秒，放開即結束。\n\n鎖定錄音：向下拖動，或移到膠囊內及邊緣附近。綠光亮起後放手繼續說，點 ✓ 完成、× 取消。\n\n拖開取消：按住滑鼠拖遠，紅光亮起後放手取消；移回膠囊可恢復鎖定。鎖定後，也可重新按住膠囊向外拖動取消。一般移動滑鼠不會取消錄音。\n\n微信：僅在聊天主視窗底部輸入區域的左半部分生效，會接管微信內建的按住語音輸入。不建議在觸控式軌跡板上開啟。
@@ -335,12 +335,12 @@ API Key 保存到钥匙串失败，请重试	Couldn't save API Key to Keychain. 
 随时问 AI	Ask AI Anytime	隨時問 AI
 在空白处按住说话，让 AI 帮你解答。	Hold on empty space and speak to have AI answer for you.	在空白處按住說話，讓 AI 幫你解答。
 开始提问：在页面空白处按住鼠标左键说出问题，松开后显示回答。输入框、按钮和链接不触发提问。\n\n继续追问：按住回答面板继续说话，AI 会结合当前话题回答。\n\n管理浮窗：点图钉可固定回答；未固定时，点外面会收起，鼠标移回可展开。回答支持复制。\n\n查看记录：对话保存在「历史记录」中，同一话题的多轮问答合并展示。\n\n所用模型：使用「模型」中配置的润色模型；千问支持联网搜索。	Ask: press and hold the left mouse button on empty space on the page and speak your question; release to see the answer. Text fields, buttons and links don't trigger a question.\n\nFollow up: press and hold the answer panel to keep talking; AI answers in the context of the current topic.\n\nManage the panel: click the pin to keep the answer open; when unpinned, clicking outside hides it, and moving the mouse back expands it. Answers can be copied.\n\nView history: conversations are saved in “History”, with multi-round Q&A on the same topic shown together.\n\nModel used: the cleanup model configured in “Model”; Qwen supports web search.	開始提問：在頁面空白處按住滑鼠左鍵說出問題，放開後顯示回答。輸入框、按鈕和連結不會觸發提問。\n\n繼續追問：按住回答面板繼續說話，AI 會結合目前話題回答。\n\n管理浮窗：點圖釘可固定回答；未固定時，點外面會收起，滑鼠移回可展開。回答支援複製。\n\n查看紀錄：對話儲存在「歷史紀錄」中，同一話題的多輪問答合併顯示。\n\n所用模型：使用「模型」中設定的潤飾模型；千問支援聯網搜尋。
-TYPEFREE / 历史记录	TYPEFREE / HISTORY	TYPEFREE / 歷史紀錄
+HANDFREE / 历史记录	HANDFREE / HISTORY	HANDFREE / 歷史紀錄
 文字与音频都只存在本机，没有中间商。重新转写会把音频发送到你配置的识别服务商并产生费用。	Text and audio stay only on this Mac, with no middleman. Re-transcribing sends the audio to your configured recognition provider and incurs charges.	文字與音訊都只存在本機，沒有中間商。重新轉錄會把音訊傳送到你設定的辨識服務商並產生費用。
 清空历史	Clear History	清除歷史
 导出…	Export…	匯出…
 有 {} 条历史记录暂时读不出来（解密钥匙可能已更换）。记录还在本机，请不要清空历史，可以在「反馈」里联系我们。	{} history records can't be read right now (the decryption key may have changed). The records are still on this Mac. Please don't clear history; you can contact us in “Feedback”.	有 {} 筆歷史紀錄暫時讀不出來（解密金鑰可能已更換）。紀錄還在本機，請不要清除歷史，可以在「意見回饋」裡聯絡我們。
-有 {} 条历史记录暂时读不出来：没能从系统「钥匙串」取到解密钥匙。记录都还在，请不要清空历史。\n重启电脑后打开 Typefree，系统询问时输入开机密码并点「始终允许」。	{} history records can't be read right now: couldn't get the decryption key from the system Keychain. All records are still there. Please don't clear history.\nRestart your Mac, open Typefree, and when the system asks, enter your login password and click “Always Allow”.	有 {} 筆歷史紀錄暫時讀不出來：沒能從系統「鑰匙圈」取得解密金鑰。紀錄都還在，請不要清除歷史。\n重新啟動電腦後打開 Typefree，系統詢問時輸入登入密碼並點「永遠允許」。
+有 {} 条历史记录暂时读不出来：没能从系统「钥匙串」取到解密钥匙。记录都还在，请不要清空历史。\n重启电脑后打开 Handfree，系统询问时输入开机密码并点「始终允许」。	{} history records can't be read right now: couldn't get the decryption key from the system Keychain. All records are still there. Please don't clear history.\nRestart your Mac, open Handfree, and when the system asks, enter your login password and click “Always Allow”.	有 {} 筆歷史紀錄暫時讀不出來：沒能從系統「鑰匙圈」取得解密金鑰。紀錄都還在，請不要清除歷史。\n重新啟動電腦後打開 Handfree，系統詢問時輸入登入密碼並點「永遠允許」。
 还没有历史记录。完成一次语音输入后，这里会显示最近的转写结果。	No history yet. After your first voice input, recent transcriptions will appear here.	還沒有歷史紀錄。完成一次語音輸入後，這裡會顯示最近的轉錄結果。
 已显示 {} / {} · 继续向下滚动加载更多	Showing {} / {} · Scroll down to load more	已顯示 {} / {} · 繼續向下捲動載入更多
 无内容	No content	無內容
@@ -388,7 +388,7 @@ TYPEFREE / 历史记录	TYPEFREE / HISTORY	TYPEFREE / 歷史紀錄
 清空	Clear	清除
 语音输入内容保存时长	Voice Input Retention	語音輸入內容保存時長
 文字和音频一起保存。默认保存全部数据；改成较短时长后，过期的本地历史会自动删除。	Text and audio are kept together. By default all data is kept; with a shorter period, expired local history is deleted automatically.	文字和音訊一起保存。預設保存全部資料；改成較短時長後，過期的本機歷史會自動刪除。
-TYPEFREE / 个人词库	TYPEFREE / VOCABULARY	TYPEFREE / 個人詞庫
+HANDFREE / 个人词库	HANDFREE / VOCABULARY	HANDFREE / 個人詞庫
 添加你常说的人名、产品名、专有名词，语音识别会优先认出它们。你改过的错词也会自动学进来。	Add names, product names and terms you say often; speech recognition will recognize them first. Words you correct are learned automatically too.	加入你常說的人名、產品名、專有名詞，語音辨識會優先認出它們。你改過的錯詞也會自動學進來。
 还没有词。在上面输入一个常说的人名、产品名试试。	No words yet. Try typing a name or product name you say often above.	還沒有詞。在上面輸入一個常說的人名、產品名試試。
 所有	All	所有
@@ -407,7 +407,7 @@ TYPEFREE / 个人词库	TYPEFREE / VOCABULARY	TYPEFREE / 個人詞庫
 输入新错法，回车保存	Type a new misrecognition, press Return to save	輸入新的錯誤寫法，按 Return 鍵儲存
 内置科技词热词	Built-in Tech Terms	內建科技詞熱詞
 Claude、Xcode、GitHub 等常用科技词。不常聊技术可以关掉。	Common tech terms like Claude, Xcode and GitHub. Turn off if you rarely talk tech.	Claude、Xcode、GitHub 等常用科技詞。不常聊技術可以關掉。
-TYPEFREE / 关于	TYPEFREE / ABOUT	TYPEFREE / 關於
+HANDFREE / 关于	HANDFREE / ABOUT	HANDFREE / 關於
 语音转文字，并用 AI 帮你整理成可直接使用的文本。	Speech to text, with AI tidying it into text that's ready to use.	語音轉文字，並用 AI 幫你整理成可直接使用的文字。
 {} · macOS 状态栏应用	{} · macOS Menu Bar App	{} · macOS 選單列應用程式
 ✓ 已激活	✓ Activated	✓ 已啟用
@@ -422,5 +422,12 @@ yyyy年M月d日 HH:mm	MMM d, yyyy, HH:mm	yyyy年M月d日 HH:mm
 随系统输入设置切换	Switches with the system input setting	隨系統輸入設定切換
 Mac 内置麦克风	Mac Built-in Microphone	Mac 內建麥克風
 外部麦克风	External Microphone	外接麥克風
+# About: GPL-3.0 notice (Handfree)
+Handfree 基于 Typefree（Rui Wang / kdsz001）修改，由 Teddy Chan 于 2026 年起维护。	Handfree is a modified version of Typefree (Rui Wang / kdsz001), maintained by Teddy Chan since 2026.	Handfree 以 Typefree（Rui Wang / kdsz001）為基礎修改，由 Teddy Chan 自 2026 年起維護。
+本程序是自由软件，按 GNU 通用公共许可证第 3 版（GPL-3.0）发布，不提供任何担保。	This program is free software, released under the GNU General Public License version 3 (GPL-3.0), with no warranty.	本程式為自由軟體，依 GNU 通用公共授權條款第 3 版（GPL-3.0）發布，不提供任何擔保。
+「Typefree」名称与图标属于原作者，Handfree 与其无关联。	The “Typefree” name and icon belong to the original author; Handfree is not affiliated with them.	「Typefree」名稱與圖示屬於原作者，Handfree 與其無關聯。
+源代码 →	Source Code →	原始碼 →
+上游项目 →	Upstream Project →	上游專案 →
+GPL-3.0 许可证 →	GPL-3.0 License →	GPL-3.0 授權條款 →
 """#
 }

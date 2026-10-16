@@ -37,7 +37,7 @@ extension UITranslationTable {
 {} 周前	{} wk ago	{} 週前
 # StatusBarController.swift
 开始/停止录音	Start/Stop Recording	開始／停止錄音
-打开 Typefree	Open Typefree	打開 Typefree
+打开 Handfree	Open Handfree	打開 Handfree
 个人词库…	Vocabulary…	個人詞庫…
 复制最后一句	Copy Last Sentence	複製最後一句
 {}（推荐）	{} (Recommended)	{}（推薦）
@@ -50,7 +50,7 @@ extension UITranslationTable {
 音频会话激活失败: {}	Failed to activate audio session: {}	音訊工作階段啟用失敗：{}
 没有检测到麦克风输入	No microphone input detected	沒有偵測到麥克風輸入
 # AppDelegate.swift
-Typefree 更新	Typefree Update	Typefree 更新
+Handfree 更新	Handfree Update	Handfree 更新
 稍后	Later	稍後
 正在安装并重启…	Installing and Restarting…	正在安裝並重新啟動…
 有可用更新	Update Available	有可用的更新
@@ -65,7 +65,7 @@ Typefree 更新	Typefree Update	Typefree 更新
 已是最新版本	You're Up to Date	已是最新版本
 当前没有可安装的新版本。	There's no new version to install right now.	目前沒有可安裝的新版本。
 更新状态	Update Status	更新狀態
-Typefree 会每天自动检查一次；有新版本时会先在后台下载好，再提醒你安装。	Typefree checks for updates once a day. When a new version is available, it downloads it in the background first, then reminds you to install.	Typefree 每天會自動檢查一次；有新版本時會先在背景下載好，再提醒你安裝。
+Handfree 会每天自动检查一次；有新版本时会先在后台下载好，再提醒你安装。	Handfree checks for updates once a day. When a new version is available, it downloads it in the background first, then reminds you to install.	Handfree 每天會自動檢查一次；有新版本時會先在背景下載好，再提醒你安裝。
 好	OK	好
 更新检查失败	Update Check Failed	檢查更新失敗
 新版本	New Version	新版本
@@ -75,7 +75,7 @@ Typefree 会每天自动检查一次；有新版本时会先在后台下载好�
 正在下载更新 {}%…	Downloading update {}%…	正在下載更新 {}%…
 正在开始下载…	Starting download…	正在開始下載…
 安装并重启	Install and Restart	安裝並重新啟動
-Typefree 新版本	New Typefree Version	Typefree 新版本
+Handfree 新版本	New Handfree Version	Handfree 新版本
 正在下载更新 {}%，下载完成后会自动安装并重启。	Downloading update {}%. It will install and restart automatically when done.	正在下載更新 {}%，下載完成後會自動安裝並重新啟動。
 正在下载更新，下载完成后会自动安装并重启。	Downloading update. It will install and restart automatically when done.	正在下載更新，下載完成後會自動安裝並重新啟動。
 发现版本 {}。	Version {} is available.	發現版本 {}。
@@ -102,8 +102,8 @@ Typefree 新版本	New Typefree Version	Typefree 新版本
 知道了	Got It	知道了
 \n(已复制到剪贴板；授予辅助功能权限后可自动粘贴)	\n(Copied to clipboard; grant Accessibility permission to paste automatically)	\n（已複製到剪貼簿；授予輔助使用權限後可自動貼上）
 \n(窗口已切换，已复制到剪贴板)	\n(Window switched; copied to clipboard)	\n（視窗已切換，已複製到剪貼簿）
-隐藏 Typefree	Hide Typefree	隱藏 Typefree
-退出 Typefree	Quit Typefree	結束 Typefree
+隐藏 Handfree	Hide Handfree	隱藏 Handfree
+退出 Handfree	Quit Handfree	結束 Handfree
 编辑	Edit	編輯
 撤销	Undo	還原
 重做	Redo	重做
@@ -127,7 +127,7 @@ Typefree 新版本	New Typefree Version	Typefree 新版本
 已复制最后一句 · 按 ⌘V 粘贴	Copied the last sentence · Press ⌘V to paste	已複製最後一句 · 按 ⌘V 貼上
 没有可纠正的内容	Nothing to correct	沒有可修正的內容
 纠正上次结果	Correct Last Result	修正上次結果
-Typefree 输出了：\n{}\n\n请在下方修改为正确的文字：	Typefree typed:\n{}\n\nEdit it below to the correct text:	Typefree 輸出了：\n{}\n\n請在下方修改為正確的文字：
+Handfree 输出了：\n{}\n\n请在下方修改为正确的文字：	Handfree typed:\n{}\n\nEdit it below to the correct text:	Handfree 輸出了：\n{}\n\n請在下方修改為正確的文字：
 学习	Learn	學習
 取消	Cancel	取消
 没有需要加进词库的新词	No new words to add to Vocabulary	沒有需要加進詞庫的新詞
@@ -138,7 +138,7 @@ Typefree 输出了：\n{}\n\n请在下方修改为正确的文字：	Typefree ty
 已输出未润色文字（润色失败：{}）{}	Typed text without cleanup (cleanup failed: {}){}	已輸出未潤飾的文字（潤飾失敗：{}）{}
 ← 上一步	← Back	← 上一步
 下一步 →	Next →	下一步 →
-欢迎使用 Typefree	Welcome to Typefree	歡迎使用 Typefree
+欢迎使用 Handfree	Welcome to Handfree	歡迎使用 Handfree
 按住快捷键说话，松手就贴上整理好的文字。简单几步就能开始。	Hold the shortcut and speak; release to paste the cleaned-up text. Just a few steps to get started.	按住快速鍵說話，放開就貼上整理好的文字。簡單幾步就能開始。
 开始设置	Start Setup	開始設定
 开启辅助功能	Turn On Accessibility	開啟輔助使用
@@ -156,7 +156,7 @@ Typefree 输出了：\n{}\n\n请在下方修改为正确的文字：	Typefree ty
 按住 {} 说话，松手就贴上整理好的文字。	Hold {} and speak; release to paste the cleaned-up text.	按住 {} 說話，放開就貼上整理好的文字。
 开始使用	Get Started	開始使用
 # SupportChatView.swift
-TYPEFREE / 反馈	TYPEFREE / FEEDBACK	TYPEFREE / 意見回饋
+HANDFREE / 反馈	HANDFREE / FEEDBACK	HANDFREE / 意見回饋
 遇到问题或有建议，提交一个工单。开发者的回复会出现在对应工单里。	Have a problem or a suggestion? Submit a ticket. The developer's replies will appear in that ticket.	遇到問題或有建議，提交一個工單。開發者的回覆會出現在對應的工單裡。
 提交工单	Submit Ticket	提交工單
 全部 {}	All {}	全部 {}

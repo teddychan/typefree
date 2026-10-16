@@ -5,7 +5,7 @@
 // `html:` keys override a shared key for this page only.
 extension UITranslationTable {
     static let guide = #"""
-Typefree 新功能	What's New in Typefree	Typefree 新功能
+Handfree 新功能	What's New in Handfree	Handfree 新功能
 新功能	What's New	新功能
 html:开始说话	Start speaking	開始說話
 项目群	Project Team	專案群組

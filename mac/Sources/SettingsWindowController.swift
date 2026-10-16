@@ -7306,9 +7306,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         // GPL-3.0 §5：注明改动与出处，并在界面里给出许可证、无担保声明与源码地址
         stack.setCustomSpacing(16, after: card)
         let legalCard = makeCard()
-        let legal = label("Handfree 基于 Typefree（Rui Wang / kdsz001）修改，由 Teddy Chan 于 2026 年起维护。\n"
-                          + "本程序是自由软件，按 GNU 通用公共许可证第 3 版（GPL-3.0）发布，不提供任何担保。"
-                          + "「Typefree」名称与图标属于原作者，Handfree 与其无关联。",
+        // 每句一行：界面语言按行查翻译表
+        let legal = label(["Handfree 基于 Typefree（Rui Wang / kdsz001）修改，由 Teddy Chan 于 2026 年起维护。",
+                           "本程序是自由软件，按 GNU 通用公共许可证第 3 版（GPL-3.0）发布，不提供任何担保。",
+                           "「Typefree」名称与图标属于原作者，Handfree 与其无关联。"].joined(separator: "\n"),
                           size: 12, weight: .regular, color: theme.text3)
         legal.maximumNumberOfLines = 0
         let links = NSStackView()
