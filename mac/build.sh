@@ -55,6 +55,8 @@ copy_xcode_build_to_dist() {
 # macOS 把麦克风/辅助功能授权绑在「bundle ID + 签名身份」上，
 # 测试版与正式版签名一致，来回安装才不会反复要求重新授权。
 DEVELOPER_ID_IDENTITY="${DEVELOPER_ID_IDENTITY:-}"
+# RELEASE_BUILD=1（scripts/release.sh 设置）：签名加 --timestamp 以便公证，且必须用 Developer ID。
+RELEASE_BUILD="${RELEASE_BUILD:-0}"
 
 developer_id_available() {
     [ -n "$DEVELOPER_ID_IDENTITY" ] || return 1
@@ -65,19 +67,19 @@ resign_with_developer_id() {
     local app="$1"
     local entitlements="$SCRIPT_DIR/Resources/VoicePolish.entitlements"
     # 与 release_dmg.sh 同序：先签 Sparkle 嵌套组件（由内到外），最后签 app 本体。
-    # 本地构建不加 --timestamp（无需公证，离线也能签）。
+    # 本地构建不加 --timestamp（无需公证，离线也能签）；发版构建必须加。
+    local sign=(codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY")
+    [ "$RELEASE_BUILD" = "1" ] && sign+=(--timestamp)
     local sp_v="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
     if [ -d "$sp_v" ]; then
         for xpc in "$sp_v/XPCServices/"*.xpc; do
-            [ -e "$xpc" ] && codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$xpc"
+            [ -e "$xpc" ] && "${sign[@]}" "$xpc"
         done
-        [ -e "$sp_v/Autoupdate" ]  && codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$sp_v/Autoupdate"
-        [ -e "$sp_v/Updater.app" ] && codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$sp_v/Updater.app"
-        codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$app/Contents/Frameworks/Sparkle.framework"
+        [ -e "$sp_v/Autoupdate" ]  && "${sign[@]}" "$sp_v/Autoupdate"
+        [ -e "$sp_v/Updater.app" ] && "${sign[@]}" "$sp_v/Updater.app"
+        "${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework"
     fi
-    codesign --force --options runtime \
-        --entitlements "$entitlements" \
-        --sign "$DEVELOPER_ID_IDENTITY" "$app"
+    "${sign[@]}" --entitlements "$entitlements" "$app"
     codesign --verify --strict "$app"
 }
 
@@ -151,6 +153,9 @@ build_with_xcode() {
         resign_with_developer_id "$built_app"
         SIGNING_NOTE="Note: signed with Developer ID（与正式版同签名，覆盖安装不会重新要权限）."
         echo "✅ Signed with Developer ID identity"
+    elif [ "$RELEASE_BUILD" = "1" ]; then
+        echo "❌ RELEASE_BUILD=1 needs a Developer ID Application identity (DEVELOPER_ID_IDENTITY=\"$DEVELOPER_ID_IDENTITY\")."
+        return 1
     else
         local signing_line
         signing_line="$(codesign -dv --verbose=2 "$built_app" 2>&1 | awk -F= '/^Authority=Apple Development:/ { print $2; exit }')"
