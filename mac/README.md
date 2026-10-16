@@ -40,12 +40,45 @@ and the log in `~/Library/Logs/Handfree.log` — none of it is shared with an in
 Sparkle reads `https://raw.githubusercontent.com/teddychan/typefree/main/docs/handfree/appcast.xml`
 ([docs/handfree/appcast.xml](../docs/handfree/appcast.xml)), signed with the shared Dragon EdDSA key.
 
+## Release
+
+```bash
+cd mac
+bash scripts/release.sh            # dry run: build, notarize, package, write the appcast item locally
+bash scripts/release.sh --publish  # also push the tag and create the GitHub Release
+```
+
+The script runs `build.sh` with `RELEASE_BUILD=1` (Developer ID signing with `--timestamp` and hardened
+runtime, nested Sparkle components first). It then notarizes and staples the app, and builds the two
+artifacts in `dist/release/<version>/`:
+
+- `Handfree-<version>.zip` — the Sparkle update
+- `Handfree-<version>.pkg` — the notarized installer for people, which installs to `/Applications`
+
+It signs the zip with Sparkle's `sign_update` and adds an `<item>` at the top of
+`docs/handfree/appcast.xml`. A re-run replaces the item for the same build number.
+
+- **Version:** `<CFBundleShortVersionString>-custom-<CUSTOM_BUILD>` (e.g. `3.0.13-custom-1`), tag `v<version>`.
+  `sparkle:version` is `CFBundleVersion`, the git commit count.
+- **Needs:** the `Developer ID Application` and `Developer ID Installer` certificates for team `4AF3KGGV29`
+  in the keychain (override with `DEVELOPER_ID_IDENTITY` / `INSTALLER_IDENTITY`), and the Sparkle EdDSA
+  private key in the login keychain. It also needs a notarytool API key, read from
+  `~/.claude/skills/update-macos-appstore/config.sh` or from `NOTARY_KEY_ID`, `NOTARY_ISSUER` and
+  `NOTARY_KEY_P8`.
+- **Publishing:** bump `CUSTOM_BUILD` (or sync a new upstream version) and commit. Then run
+  `git tag v<version>` on that commit and `bash scripts/release.sh --publish` from a clean tree. That pushes
+  the tag and creates the GitHub Release with the zip, the pkg, `LICENSE.txt` and `NOTICE.txt`, which
+  GPL-3.0 requires us to ship. Last, commit the updated `docs/handfree/appcast.xml` and merge it to `main`;
+  the feed only goes live once the item is on `main`.
+- **Arm64 only:** `build.sh` builds for arm64 only, so the item carries
+  `sparkle:hardwareRequirements arm64`.
+
 ## Layout
 
 - `Sources/` — the menu-bar app (AppKit + SwiftUI)
 - `VoicePolishCore/` — core library (recording, speech recognition, AI cleanup, vocabulary, encrypted history)
 - `Resources/` — icon, entitlements, What's New page
-- `build.sh`, `scripts/` — build, install, debug build
+- `build.sh`, `scripts/` — build, install, debug build, release
 
 Internal type and module names (`VoicePolish*`, `Typefree*`) are kept as upstream has them so merges from
 upstream stay small; they never appear in the UI.
