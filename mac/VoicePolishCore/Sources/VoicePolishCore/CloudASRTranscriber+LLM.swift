@@ -20,6 +20,20 @@ extension CloudASRTranscriber {
         /// 2026-10 OpenAI 文档推荐的转写模型
         public static let openAIDefaultModel = "gpt-transcribe"
         public static let geminiDefaultModel = "gemini-3.8-flash"
+        /// 本地识别用的模型（LocalASRServer 启动它）
+        public static let localModelID = "Qwen/Qwen3-ASR-1.7B"
+        /// 用户打开了「启用本地模型」（LocalASRServer.enabledConfigKey；这里不依赖 macOS 专属类型）
+        static func localEnabled(config: VoicePolishConfig) -> Bool {
+            config.bool(forKey: "local_asr_enabled", defaultValue: false)
+        }
+        /// 本地识别只在 Apple 芯片的 Mac 上可用（MLX）
+        public static var localSupported: Bool {
+            #if os(macOS) && arch(arm64)
+            return true
+            #else
+            return false
+            #endif
+        }
         public static let transcriptionsPath = "/audio/transcriptions"
         static let openAIURL = URL(string: "https://api.openai.com/v1/audio/transcriptions")!
         static let geminiURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")!
@@ -84,7 +98,7 @@ extension CloudASRTranscriber {
             guard !m.isEmpty, let url = LLMASR.customEndpoint(base: config.string(forKey: LLMASR.customBaseURLKey) ?? "")
             else { return nil }
             return LLMASRSettings(url: url, apiKey: config.string(forKey: LLMASR.customKeyKey) ?? "", model: m)
-        case .volcano, .bailian:
+        case .volcano, .bailian, .local:
             return nil
         }
     }
@@ -156,6 +170,38 @@ extension CloudASRTranscriber {
             }
             completion(Self.speechResult(parsed.0))
         }.resume()
+    }
+
+    /// 本地 Qwen3-ASR：没跑起来就顺手拉起（首次会自动安装、下载模型），这一次如实报「还在准备」；
+    /// 就绪后发 16 kHz WAV（服务端直接读 WAV，不需要 ffmpeg）。
+    func transcribeLocal(samples: [Float], sampleRate: Int, enabled: Bool, budgetSeconds: TimeInterval,
+                         completion: @escaping (Result<String, Error>) -> Void) {
+        #if os(macOS)
+        // 不到 0.1 秒（如录音收尾的碎片）：服务端会 500「Audio too short for STFT」，直接当没听出话，也不去拉起服务
+        guard samples.count >= max(sampleRate / 10, 1) else {
+            completion(.failure(TranscriptionError.noSpeech))
+            return
+        }
+        // 没打开「启用本地模型」就不下载、不加载，如实提示
+        guard enabled else {
+            completion(.failure(TranscriptionError.serverFailed(message: Self.hint(for: .localModelDisabled))))
+            return
+        }
+        let server = LocalASRServer.shared
+        server.start()
+        guard let settings = server.transcriptionSettings() else {
+            completion(.failure(TranscriptionError.serverFailed(message: server.notReadyMessage)))
+            return
+        }
+        guard let wav = WAVEncoder.makeWAVData(from: samples, sampleRate: sampleRate), !wav.isEmpty else {
+            completion(.failure(TranscriptionError.invalidAudio))
+            return
+        }
+        debugLog?("Cloud ASR: provider=local model=\(settings.model) url=\(settings.url.absoluteString) audio=wav/\(wav.count / 1024)KB")
+        transcribeOpenAIStyle(audioData: wav, format: "wav", settings: settings, budgetSeconds: budgetSeconds, completion: completion)
+        #else
+        completion(.failure(TranscriptionError.missingCredentials))
+        #endif
     }
 
     /// 去掉提示词回显；空 = 没听出话（与火山 20000003 / 百炼空结果同等对待，测试连接也据此判通）

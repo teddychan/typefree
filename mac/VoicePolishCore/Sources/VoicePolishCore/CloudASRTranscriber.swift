@@ -9,6 +9,7 @@ public final class CloudASRTranscriber {
         case openai    // OpenAI /audio/transcriptions
         case gemini    // Gemini：音频直接喂给模型（OpenAI 兼容 chat/completions）
         case custom    // 自填地址的 OpenAI 兼容 /audio/transcriptions 网关
+        case local     // 本机 Qwen3-ASR（mlx-qwen3-asr，App 自动安装 / 启停）
 
         /// 与设置页「语音识别」服务商选项一致
         public var displayName: String {
@@ -18,6 +19,7 @@ public final class CloudASRTranscriber {
             case .openai: return "OpenAI"
             case .gemini: return "Gemini"
             case .custom: return "自定义"
+            case .local: return "本地 Qwen3-ASR"
             }
         }
 
@@ -29,6 +31,7 @@ public final class CloudASRTranscriber {
             case .openai: return .openai
             case .gemini: return .gemini
             case .custom: return .custom
+            case .local: return .local
             }
         }
     }
@@ -37,6 +40,7 @@ public final class CloudASRTranscriber {
     public enum OwnKeyIssue: Equatable {
         case keychainUnreadable                                  // 填过，但钥匙串这会儿读不出来
         case missingForCurrent(current: ASRProvider, configured: ASRProvider)  // 选的服务没 Key，另一家有
+        case localModelDisabled                                  // 选了本地模型，但没打开「启用本地模型」
     }
 
     /// 可切换的识别版本，各有独立免费额度：火山三档 + 百炼一档。
@@ -49,6 +53,7 @@ public final class CloudASRTranscriber {
         case openai     // OpenAI：同步，模型可在设置里改
         case gemini     // Gemini：同步，模型可在设置里改
         case custom     // 自定义网关：同步，模型必填
+        case local = "local-qwen3-asr"   // 本机 Qwen3-ASR：同步，零配置
 
         public var provider: ASRProvider {
             switch self {
@@ -57,6 +62,7 @@ public final class CloudASRTranscriber {
             case .openai: return .openai
             case .gemini: return .gemini
             case .custom: return .custom
+            case .local: return .local
             }
         }
 
@@ -66,7 +72,7 @@ public final class CloudASRTranscriber {
             case .turbo: return "volc.bigasr.auc_turbo"
             case .standard: return "volc.bigasr.auc"
             case .v2: return "volc.seedasr.auc"
-            case .bailian, .openai, .gemini, .custom: return ""
+            case .bailian, .openai, .gemini, .custom, .local: return ""
             }
         }
 
@@ -77,13 +83,14 @@ public final class CloudASRTranscriber {
             case .openai: return LLMASR.openAIDefaultModel
             case .gemini: return LLMASR.geminiDefaultModel
             case .custom: return "custom"
+            case .local: return LLMASR.localModelID
             }
         }
 
         /// true = 同步一步出结果（极速版、百炼）；false = 异步 submit/query（火山标准版/2.0）
         public var isSync: Bool {
             switch self {
-            case .turbo, .bailian, .openai, .gemini, .custom: return true
+            case .turbo, .bailian, .openai, .gemini, .custom, .local: return true
             case .standard, .v2: return false
             }
         }
@@ -95,7 +102,7 @@ public final class CloudASRTranscriber {
             case .standard: return "标准版"
             case .v2: return "2.0"
             case .bailian: return "百炼"
-            case .openai, .gemini, .custom: return provider.displayName
+            case .openai, .gemini, .custom, .local: return provider.displayName
             }
         }
 
@@ -105,7 +112,7 @@ public final class CloudASRTranscriber {
             case .turbo: return .standard
             case .standard: return .v2
             case .v2: return .bailian
-            case .bailian, .openai, .gemini, .custom: return nil
+            case .bailian, .openai, .gemini, .custom, .local: return nil
             }
         }
     }
@@ -186,6 +193,7 @@ public final class CloudASRTranscriber {
         case .volcano: return volcanoCredentials() != nil
         case .bailian: return dashscopeAPIKey() != nil
         case .openai, .gemini, .custom: return Self.llmASRSettings(for: version.provider, config: config) != nil
+        case .local: return LLMASR.localSupported && LLMASR.localEnabled(config: config)   // 打开开关即可，不用填别的
         }
     }
 
@@ -200,8 +208,10 @@ public final class CloudASRTranscriber {
         case .openai: secretKeys = [LLMASR.openAIKeyKey]
         case .gemini: secretKeys = [LLMASR.geminiKeyKey]
         case .custom: secretKeys = [LLMASR.customKeyKey]
+        case .local: secretKeys = []
         }
         if secretKeys.contains(where: { config.secretUnreadable(forKey: $0) }) { return .keychainUnreadable }
+        if version.provider == .local { return .localModelDisabled }
         switch version.provider {
         case .volcano where dashscopeAPIKey() != nil:
             return .missingForCurrent(current: .volcano, configured: .bailian)
@@ -219,6 +229,8 @@ public final class CloudASRTranscriber {
             return "读不到钥匙串里的 Key · 重启 Typefree 再试，系统询问时点「允许」"
         case .missingForCurrent(let current, let configured):
             return "语音识别选的「\(current.displayName)」还没填 Key · 在「设置 → 模型」填上，或改选已填 Key 的「\(configured.displayName)」"
+        case .localModelDisabled:
+            return "本地模型还没启用 · 在「设置 → 模型」打开「启用本地模型」"
         }
     }
 
@@ -290,7 +302,8 @@ public final class CloudASRTranscriber {
     public func transcribeAuto(samples: [Float], sampleRate: Int = 16000, version: ASRVersion, completion: @escaping (Result<String, Error>) -> Void) {
         // 百炼限流是 100 RPM 且突发按秒级（约 1.6 次/秒）判定，一口气 5 段易被拒且其报错不走重试，
         // 故百炼降到 2 路并发；火山极速版官方默认 5 并发、标准版/2.0 为 20 QPS，用满 5 路没问题。
-        let maxConcurrent = min(chunkMaxConcurrent(), version == .bailian ? 2 : Int.max)
+        // 本地模型本来就一次只跑一段：不分段并发
+        let maxConcurrent = min(chunkMaxConcurrent(), version == .bailian ? 2 : version == .local ? 1 : Int.max)
         guard maxConcurrent > 1 else {
             transcribe(samples: samples, sampleRate: sampleRate, version: version, completion: completion)
             return
@@ -422,6 +435,9 @@ public final class CloudASRTranscriber {
             }
             debugLog?("Cloud ASR: provider=gemini model=\(settings.model) audio=wav/\(wav.count / 1024)KB budget=\(Int(budget))s")
             transcribeGemini(wavData: wav, settings: settings, budgetSeconds: budget, completion: completion)
+        case .local:
+            transcribeLocal(samples: samples, sampleRate: sampleRate, enabled: LLMASR.localEnabled(config: config),
+                            budgetSeconds: budget, completion: completion)
         }
     }
 

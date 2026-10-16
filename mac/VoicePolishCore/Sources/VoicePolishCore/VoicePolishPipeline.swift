@@ -380,7 +380,8 @@ public final class VoicePolishPipeline {
         }
 
         // 应用术语纠正
-        let correctedText = aiPolisher.applyConfiguredTermCorrections(to: finalText)
+        // 最后按设置统一中文字形（简体 / 繁體），见 ChineseScript
+        let correctedText = ChineseScript.current().apply(to: aiPolisher.applyConfiguredTermCorrections(to: finalText))
         if correctedText != finalText {
             log("Term corrections applied: before chars=\(finalText.count), after chars=\(correctedText.count)")
         }
