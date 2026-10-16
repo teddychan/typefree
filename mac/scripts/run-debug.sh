@@ -63,12 +63,24 @@ custom_build="$(tr -d '[:space:]' < CUSTOM_BUILD)"
 "$pb" -c "Set :SUAutomaticallyUpdate false" "$plist"
 "$pb" -c "Delete :SUFeedURL" "$plist" 2>/dev/null || true
 
+# Local Qwen3-ASR: ship uv inside the app (Contents/Resources/LocalASR/uv) so users need nothing installed;
+# the app uses it to build a private Python env for mlx-qwen3-asr on first use.
+uv_src="${TYPEFREE_UV_BINARY:-$(command -v uv || true)}"
+if [[ -n "$uv_src" && -x "$uv_src" ]]; then
+  mkdir -p "$app/Contents/Resources/LocalASR"
+  cp -L "$uv_src" "$app/Contents/Resources/LocalASR/uv"
+  echo "==> Bundled uv $("$uv_src" --version | awk '{print $2}') for Local Qwen3-ASR"
+else
+  echo "warning: uv not found (brew install uv); Local Qwen3-ASR will need uv on the user's machine" >&2
+fi
+
 # A stable identity keeps macOS's Microphone / Accessibility grants across rebuilds;
 # ad hoc ("-") works too, but macOS asks again after every build.
 identity="${TYPEFREE_DEBUG_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null \
   | awk -F'"' '/Apple Development:/ { print $2; exit }')}"
 identity="${identity:--}"
 echo "==> Signing as: $([[ "$identity" == "-" ]] && echo "ad hoc" || echo "$identity")"
+[[ -f "$app/Contents/Resources/LocalASR/uv" ]] && codesign --force --sign "$identity" "$app/Contents/Resources/LocalASR/uv"
 codesign --force --deep --sign "$identity" "$app" >/dev/null
 codesign --force --sign "$identity" --entitlements Resources/VoicePolish.entitlements "$app"
 codesign --verify --deep --strict "$app"

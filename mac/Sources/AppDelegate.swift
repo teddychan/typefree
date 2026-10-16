@@ -1457,6 +1457,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        AppKitUILocalization.install()   // fork: translate UI text into the chosen display language
+        UILocalizer.missHandler = { [weak self] text in self?.debugLog("[UI 未翻译] \(text)") }
         // 用户关了「在 Dock 中显示」：在 Dock 图标出现前就切走，免得启动时闪一下
         DockIcon.apply()
     }
@@ -1534,6 +1536,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
         cloudTranscriber.debugLog = { [weak self] message in
             self?.debugLog(message)
         }
+        // 选了本地模型且打开了「启用本地模型」：开机就加载，说话时不用等；没启用就不下载、不占内存
+        LocalASRServer.shared.debugLog = { [weak self] message in self?.debugLog(message) }
+        if cloudTranscriber.currentVersion() == .local && LocalASRServer.isEnabled() { LocalASRServer.shared.start() }
         aiPolisher = AIPolisher()
         aiPolisher.polishLogAppNameProvider = { [weak self] in
             self?.currentFrontmostAppName() ?? "未知"
@@ -1623,6 +1628,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
         NotificationCenter.default.removeObserver(self)
         hotkeyManager?.stop()
         mouseHoldToTalkManager?.stop()
+        LocalASRServer.shared.stop()   // 本地模型占几 GB 内存，App 退出就停
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

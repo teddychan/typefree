@@ -1121,6 +1121,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     private var asrSegProviders: [CloudASRTranscriber.ASRProvider] = [.volcano, .openai, .gemini, .custom]
     /// 自定义识别网关「实际请求地址」提示行
     private var customASREndpointLabel: NSTextField?
+    /// 本地 Qwen3-ASR 的状态行（安装中 / 启动中 / 就绪 / 失败），跟着 LocalASRServer 的通知刷新
+    private var localASRStatusLabel: NSTextField?
+    private var localASRObserver: NSObjectProtocol?
+    /// 点了「测试连接」时本地模型还没就绪：等它就绪再自动测，别先报一个「正在启动」的红叉
+    private var localASRTestPending = false
     private var asrVersionControl: VPSegmentedControl?
     private var asrProviderControl: VPSegmentedControl?
     private var asrKeyContainer: NSStackView?
@@ -3665,7 +3670,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
         stack.addArrangedSubview(makeExploreCard(
             id: "translation", title: "语音翻译", summary: "把说出的话翻译成指定语言，直接输入。",
-            rows: [makeDefaultOutputLanguageRow(), makeOutputLanguageCommandRow()],
+            rows: [makeDefaultOutputLanguageRow(), makeChineseScriptRow(), makeOutputLanguageCommandRow()],
             demo: .translation,
             detailTitle: "语言与口令设置", details: { self.makeOutputLanguageCommandOptions() }
         ))
@@ -3766,6 +3771,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         stack.addArrangedSubview(pageHeader(eyebrow: "HANDFREE / 设置", title: "设置",
                                              sub: "管理启动、音频、快捷键和权限。"))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
+        addUILanguageSection(to: stack)   // fork: UI display language
 
         let launchTitle = sectionTitle("启动")
         stack.addArrangedSubview(launchTitle)
@@ -4027,6 +4033,47 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         }
     }
 
+    // MARK: Fork: UI display language (strings are translated at display time, see UILocalizer)
+
+    private func addUILanguageSection(to stack: NSStackView) {
+        let title = sectionTitle("语言 · Language")
+        stack.addArrangedSubview(title)
+        stack.setCustomSpacing(8, after: title)
+        let card = makeCard()
+        let name = label("界面语言", size: 14, weight: .medium, color: theme.text)
+        let desc = label("选「跟随 macOS」时按系统首选语言显示，没有匹配的语言就用英文。已打开的其他窗口重新打开后更新。",
+                         size: 12, weight: .regular, color: theme.text3)
+        desc.maximumNumberOfLines = 0
+        let items = UILanguage.allCases.map { VPDropdown.Item(value: $0.rawValue, title: $0.pickerTitle) }
+        let popup = VPDropdown(items: items, selectedValue: UILanguage.preference.rawValue,
+                               trackBg: theme.card, trackBorder: Self.dropdownBorder,
+                               textColor: theme.text, chevronColor: theme.text3)
+        popup.onSelect = { [weak self] value in
+            guard let self, let language = UILanguage(rawValue: value), language != UILanguage.preference else { return }
+            UILanguage.preference = language
+            // Rebuild after the menu closes: every page and the sidebar come back in the new language
+            DispatchQueue.main.async {
+                self.rebuildSidebar()
+                self.reload()
+            }
+        }
+        popup.widthAnchor.constraint(equalToConstant: 170).isActive = true
+        let textStack = NSStackView(views: [name, desc])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 2
+        textStack.setHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [textStack, NSView(), popup])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fill
+        row.spacing = 16
+        row.edgeInsets = NSEdgeInsets(top: 16, left: 20, bottom: 16, right: 20)
+        mount(row, in: card)
+        stack.addArrangedSubview(card)
+        stack.setCustomSpacing(24, after: card)
+    }
+
     @objc private func mainWindowAppearanceChanged(_ sender: VPSegmentedControl) {
         let option = Self.appearanceOptions[sender.selectedSegment]
         UserDefaults.standard.set(option.rawValue, forKey: MainWindowAppearance.userDefaultsKey)
@@ -4055,6 +4102,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             config.save(values: ["bigasr_version": provider.defaultVersion.rawValue])
         }
         asrTestResultLabel?.stringValue = ""
+        // 选中本地模型且已启用才加载；换走就卸载，不白占内存
+        if provider == .local && LocalASRServer.isEnabled() { LocalASRServer.shared.start() } else { LocalASRServer.shared.stop() }
         refreshASRFields(for: provider)
         // 识别服务商变了，优化卡片可能要在「填框」和「已复用」之间切换，刷新一下
         if let seg = polishProviderControl {
@@ -4146,6 +4195,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             let console = AIPolisher.byokProvider(isOpenAI ? "openai" : "gemini")?.consoleURL ?? AppLinks.apiKeyGuideURL
             asrGetKeyButton?.identifier = NSUserInterfaceItemIdentifier(console)
 
+        case .local:
+            addLocalASRFields(to: container)
+
         case .custom:
             let note = label("填你自己的 OpenAI 兼容语音识别网关（需要支持 /audio/transcriptions）。",
                              size: 11.5, weight: .medium, color: theme.text2)
@@ -4180,8 +4232,97 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             container.addArrangedSubview(modelRow)
             modelRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
         }
-        // 自定义网关没有统一的「获取密钥」页
-        asrGetKeyButton?.isHidden = provider == .custom
+        // 自定义网关、本地模型都没有「获取密钥」页
+        asrGetKeyButton?.isHidden = provider == .custom || provider == .local
+    }
+
+    private func addLocalASRFields(to container: NSStackView) {
+        let note = label("Qwen3-ASR-1.7B，完全在本机运行，不用填任何东西。首次会自动安装运行环境（约 300 MB）并下载模型（约 \(LocalASRServer.approxModelDownloadGB) GB），之后离线也能用。运行时约占 4–5 GB 内存，退出 App 自动停止。",
+                         size: 11.5, weight: .medium, color: theme.text2)
+        note.maximumNumberOfLines = 0
+        container.addArrangedSubview(note)
+        note.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+        let toggle = VPToggle(theme: theme, target: self, action: #selector(localASREnabledChanged(_:)))
+        toggle.setOn(LocalASRServer.isEnabled(config: config), animated: false)
+        toggle.setAccessibilityLabel("启用本地模型")
+        let toggleText = NSStackView()
+        toggleText.orientation = .vertical
+        toggleText.alignment = .leading
+        toggleText.spacing = 2
+        toggleText.addArrangedSubview(label("启用本地模型", size: 13, weight: .medium, color: theme.text))
+        let toggleDesc = label("打开：下载（首次）并加载模型。关闭：卸载模型、释放内存，已下载的文件保留。",
+                               size: 11.5, weight: .regular, color: theme.text3)
+        toggleDesc.maximumNumberOfLines = 0
+        toggleText.addArrangedSubview(toggleDesc)
+        toggleText.setHuggingPriority(.defaultLow, for: .horizontal)
+        let toggleRow = NSStackView()
+        toggleRow.orientation = .horizontal
+        toggleRow.alignment = .centerY
+        toggleRow.spacing = 16
+        toggleRow.addArrangedSubview(toggleText)
+        toggleRow.addArrangedSubview(NSView())
+        toggleRow.addArrangedSubview(toggle)
+        container.addArrangedSubview(toggleRow)
+        toggleRow.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+
+        let status = label("", size: 12, weight: .medium, color: theme.text3)
+        status.maximumNumberOfLines = 0
+        localASRStatusLabel = status
+        container.addArrangedSubview(status)
+        status.widthAnchor.constraint(equalTo: container.widthAnchor).isActive = true
+        if localASRObserver == nil {
+            localASRObserver = NotificationCenter.default.addObserver(
+                forName: LocalASRServer.stateDidChange, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshLocalASRStatus()
+            }
+        }
+        refreshLocalASRStatus()
+    }
+
+    @objc private func localASREnabledChanged(_ sender: VPToggle) {
+        asrTestResultLabel?.stringValue = ""
+        LocalASRServer.shared.setEnabled(sender.isOn, config: config)
+        refreshLocalASRStatus()
+        invalidate(.home)   // 首页「语音识别」健康状态跟着开关变
+    }
+
+    private func refreshLocalASRStatus() {
+        let state = LocalASRServer.shared.state
+        if localASRTestPending {
+            switch state {
+            case .ready:
+                localASRTestPending = false
+                runRecognitionTest()
+            case .failed(let reason):
+                localASRTestPending = false
+                asrTestButton?.isEnabled = true
+                setTestResult(asrTestResultLabel, ok: false, text: "✗ " + reason)
+            case .stopped, .installing, .starting:
+                break
+            }
+        } else {
+            asrTestResultLabel?.stringValue = ""   // 状态变了（含刚就绪），上一次的测试结果不再作数
+        }
+        guard let status = localASRStatusLabel else { return }
+        switch state {
+        case .stopped:
+            status.textColor = theme.text3
+            status.stringValue = LocalASRServer.isEnabled(config: config)
+                ? "未加载（正在准备启动）" : "未启用 · 模型未加载，不占内存"
+        case .installing:
+            status.textColor = theme.text2
+            status.stringValue = "正在安装运行环境…（首次约几分钟）"
+        case .starting:
+            status.textColor = theme.text2
+            status.stringValue = "正在启动模型…（首次需下载约 \(LocalASRServer.approxModelDownloadGB) GB，视网速可能要十几分钟）"
+        case .ready:
+            status.textColor = theme.ok
+            status.stringValue = "✓ 本地模型已就绪"
+        case .failed(let reason):
+            status.textColor = theme.danger
+            status.stringValue = "✗ \(reason) · 点「测试连接」重试"
+        }
     }
 
     /// 自定义识别网关：把会真正请求的地址写出来
@@ -4209,7 +4350,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         case .turbo: return 0
         case .standard: return 1
         case .v2: return 2
-        case .bailian, .openai, .gemini, .custom: return 0
+        case .bailian, .openai, .gemini, .custom, .local: return 0
         }
     }
 
@@ -4476,8 +4617,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         // 9-15 Ray：百炼选项隐藏；已经在用百炼的老用户仍显示（好切回来）
         asrSegProviders = asrProviderNow == .bailian ? [.volcano, .bailian, .openai, .gemini, .custom]
                                                      : [.volcano, .openai, .gemini, .custom]
+        if CloudASRTranscriber.LLMASR.localSupported { asrSegProviders.append(.local) }
         let providerSeg = VPSegmentedControl(
-            labels: asrSegProviders.map { $0 == .volcano ? "火山引擎（豆包）" : $0 == .bailian ? "百炼（阿里）" : $0.displayName },
+            labels: asrSegProviders.map {
+                switch $0 {
+                case .volcano: return "火山引擎（豆包）"
+                case .bailian: return "百炼（阿里）"
+                case .local: return "本地模型"   // 全名「本地 Qwen3-ASR」在下方说明里，分段放不下
+                default: return $0.displayName
+                }
+            },
             trackBg: theme.cardAlt, trackBorder: theme.sep,
             selBg: theme.segSelBg, selBorder: theme.sep,
             selText: theme.text, normalText: theme.text2,
@@ -5222,6 +5371,41 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         return row
     }
 
+    /// 中文字形：说中文或翻成中文时，统一输出简体 / 繁體（见 ChineseScript）
+    private func makeChineseScriptRow() -> NSView {
+        let title = label("中文字形", size: 13, weight: .medium, color: theme.text)
+        let desc = label("说中文或翻译成中文时，统一输出简体或繁體。", size: 12, weight: .regular, color: theme.text3)
+        desc.maximumNumberOfLines = 0
+        let items = ChineseScript.allCases.map { VPDropdown.Item(value: $0.rawValue, title: $0.title) }
+        let popup = VPDropdown(items: items, selectedValue: ChineseScript.current(config: config).rawValue,
+                               trackBg: theme.card,
+                               trackBorder: Self.dropdownBorder,
+                               textColor: theme.text, chevronColor: theme.text3)
+        popup.onSelect = { [weak self] value in
+            self?.config.save(value: value, forKey: ChineseScript.configKey)
+        }
+        popup.widthAnchor.constraint(equalToConstant: 150).isActive = true
+
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 2
+        textStack.addArrangedSubview(title)
+        textStack.addArrangedSubview(desc)
+        textStack.setHuggingPriority(.defaultLow, for: .horizontal)
+
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 16
+        row.edgeInsets = NSEdgeInsets(top: 4, left: 0, bottom: 4, right: 0)
+        row.distribution = .fill
+        row.addArrangedSubview(textStack)
+        row.addArrangedSubview(NSView())
+        row.addArrangedSubview(popup)
+        return row
+    }
+
     private func makeOutputLanguageCommandRow() -> NSView {
         let title = label("语音口令", size: 13, weight: .medium, color: theme.text)
         let desc = label("说「用英文」或「翻译成日文」，临时切换本次输出。", size: 12, weight: .regular, color: theme.text3)
@@ -5588,6 +5772,25 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     @objc private func testRecognitionConnection() {
         window?.makeFirstResponder(nil)   // 先结束编辑，让正在填的 Key / 地址 / 模型存下
         persistModelFields()
+        asrTestButton?.isEnabled = false
+        asrTestResultLabel?.textColor = theme.text3
+        if CloudASRTranscriber().currentVersion() == .local {
+            guard LocalASRServer.isEnabled(config: config) else {
+                asrTestButton?.isEnabled = true
+                setTestResult(asrTestResultLabel, ok: false, text: "✗ 请先打开「启用本地模型」")
+                return
+            }
+            if case .ready = LocalASRServer.shared.state {} else {
+                localASRTestPending = true
+                asrTestResultLabel?.stringValue = "等待本地模型就绪，好了自动测试…"
+                LocalASRServer.shared.start()   // 失败过的会重来
+                return
+            }
+        }
+        runRecognitionTest()
+    }
+
+    private func runRecognitionTest() {
         asrTestButton?.isEnabled = false
         asrTestResultLabel?.textColor = theme.text3
         asrTestResultLabel?.stringValue = "测试中…"
