@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "DAF9611084299CF25E323AA3"
-               BuildableName = "Typefree.app"
+               BuildableName = "Handfree.app"
                BlueprintName = "VoicePolish"
                ReferencedContainer = "container:VoicePolish.xcodeproj">
             </BuildableReference>

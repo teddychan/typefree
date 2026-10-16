@@ -106,7 +106,7 @@ extension CloudASRTranscriber {
     /// OpenAI 及兼容网关：POST multipart 到 /audio/transcriptions，返回 {"text": …}
     func transcribeOpenAIStyle(audioData: Data, format: String, settings: LLMASRSettings, budgetSeconds: TimeInterval,
                                completion: @escaping (Result<String, Error>) -> Void) {
-        let boundary = "Typefree-\(UUID().uuidString)"
+        let boundary = "Handfree-\(UUID().uuidString)"
         var fields = [("model", settings.model), ("response_format", "json")]
         // 词库当提示词：各家转写模型都用 prompt 做词汇提示（与百炼同一句话，回显时能被识别并去掉）
         if let context = PersonalVocabulary.asrContextSentence() { fields.append(("prompt", context)) }

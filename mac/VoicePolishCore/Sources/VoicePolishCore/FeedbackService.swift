@@ -80,7 +80,8 @@ public enum FeedbackService {
         }
     }
 
-    static let defaultAPIBase = "https://api.typefree.app"
+    /// Handfree：没有托管服务器，反馈不上传。为空时不发任何请求。
+    static let defaultAPIBase = ""
 
     /// 录音上限（D1 单行 2MB 硬限制，留余量）。超限则只发文字、不带音频。
     public static let maxAudioBytes = 1_900_000
@@ -126,7 +127,7 @@ public enum FeedbackService {
             return
         }
         let base = apiBase ?? UserDefaults.standard.string(forKey: "license.apiBase") ?? defaultAPIBase
-        guard let url = URL(string: base + "/feedback") else {
+        guard !base.isEmpty, let url = URL(string: base + "/feedback") else {
             DispatchQueue.main.async { completion(.failure(.network("地址错误"))) }
             return
         }

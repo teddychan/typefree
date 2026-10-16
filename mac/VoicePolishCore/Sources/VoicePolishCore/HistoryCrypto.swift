@@ -161,7 +161,7 @@ public enum HistoryCrypto {
 
     private static func defaultSecretStore() -> SecretStoring {
         #if os(iOS)
-        return KeychainSecretStore(accessGroup: "NHC4C4K7X7.com.voicepolish.shared")
+        return KeychainSecretStore(accessGroup: "4AF3KGGV29.com.dragonapp.handfree.shared")
         #else
         return KeychainSecretStore.shared
         #endif

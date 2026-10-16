@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_DIR="$SCRIPT_DIR/dist/Typefree Install.app"
+APP_DIR="$SCRIPT_DIR/dist/Handfree Install.app"
 CONTENTS="$APP_DIR/Contents"
 MACOS="$CONTENTS/MacOS"
 RESOURCES="$CONTENTS/Resources"
@@ -26,7 +26,7 @@ print_summary() {
     local app_size
     app_size="$(du -sh "$APP_DIR" | cut -f1)"
     echo ""
-    echo "✅ Typefree install bundle built successfully ($app_size)"
+    echo "✅ Handfree install bundle built successfully ($app_size)"
     echo "   Location: $APP_DIR"
     echo "   $SIGNING_NOTE"
     echo ""
@@ -55,6 +55,8 @@ copy_xcode_build_to_dist() {
 # macOS 把麦克风/辅助功能授权绑在「bundle ID + 签名身份」上，
 # 测试版与正式版签名一致，来回安装才不会反复要求重新授权。
 DEVELOPER_ID_IDENTITY="${DEVELOPER_ID_IDENTITY:-}"
+# RELEASE_BUILD=1（scripts/release.sh 设置）：签名加 --timestamp 以便公证，且必须用 Developer ID。
+RELEASE_BUILD="${RELEASE_BUILD:-0}"
 
 developer_id_available() {
     [ -n "$DEVELOPER_ID_IDENTITY" ] || return 1
@@ -65,20 +67,39 @@ resign_with_developer_id() {
     local app="$1"
     local entitlements="$SCRIPT_DIR/Resources/VoicePolish.entitlements"
     # 与 release_dmg.sh 同序：先签 Sparkle 嵌套组件（由内到外），最后签 app 本体。
-    # 本地构建不加 --timestamp（无需公证，离线也能签）。
+    # 本地构建不加 --timestamp（无需公证，离线也能签）；发版构建必须加。
+    local sign=(codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY")
+    [ "$RELEASE_BUILD" = "1" ] && sign+=(--timestamp)
     local sp_v="$app/Contents/Frameworks/Sparkle.framework/Versions/B"
     if [ -d "$sp_v" ]; then
         for xpc in "$sp_v/XPCServices/"*.xpc; do
-            [ -e "$xpc" ] && codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$xpc"
+            [ -e "$xpc" ] && "${sign[@]}" "$xpc"
         done
-        [ -e "$sp_v/Autoupdate" ]  && codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$sp_v/Autoupdate"
-        [ -e "$sp_v/Updater.app" ] && codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$sp_v/Updater.app"
-        codesign --force --options runtime --sign "$DEVELOPER_ID_IDENTITY" "$app/Contents/Frameworks/Sparkle.framework"
+        [ -e "$sp_v/Autoupdate" ]  && "${sign[@]}" "$sp_v/Autoupdate"
+        [ -e "$sp_v/Updater.app" ] && "${sign[@]}" "$sp_v/Updater.app"
+        "${sign[@]}" "$app/Contents/Frameworks/Sparkle.framework"
     fi
-    codesign --force --options runtime \
-        --entitlements "$entitlements" \
-        --sign "$DEVELOPER_ID_IDENTITY" "$app"
+    "${sign[@]}" --entitlements "$entitlements" "$app"
     codesign --verify --strict "$app"
+}
+
+# Sparkle 比较的是 CFBundleVersion：每次构建写入 git 提交数，保证单调递增；
+# 同一个构建号也写进 TypefreeCustomBuild，关于页显示「<上游版本>-custom-<构建号>」。
+stamp_bundle() {
+    local plist="$1/Contents/Info.plist"
+    local pb=/usr/libexec/PlistBuddy
+    local build_number
+    build_number="$(git -C "$SCRIPT_DIR" rev-list --count HEAD 2>/dev/null || echo 1)"
+    "$pb" -c "Set :CFBundleVersion $build_number" "$plist"
+    "$pb" -c "Set :TypefreeCustomBuild $build_number" "$plist" 2>/dev/null \
+        || "$pb" -c "Add :TypefreeCustomBuild string $build_number" "$plist"
+
+    # GPL-3.0 与 Sparkle（MIT/BSD）要求二进制分发附带许可与版权声明
+    local legal="$1/Contents/Resources/Licenses"
+    mkdir -p "$legal"
+    cp "$SCRIPT_DIR/LICENSE" "$legal/LICENSE.txt"
+    cp "$SCRIPT_DIR/../NOTICE" "$legal/NOTICE.txt"
+    cp "$SCRIPT_DIR/THIRD_PARTY_LICENSES/"*.txt "$legal/"
 }
 
 xcode_signing_ready() {
@@ -100,7 +121,7 @@ xcode_signing_ready() {
 }
 
 build_with_xcode() {
-    echo "🔨 Building Typefree with Xcode-managed signing..."
+    echo "🔨 Building Handfree with Xcode-managed signing..."
 
     xcodebuild \
         -project "$PROJECT_PATH" \
@@ -118,20 +139,29 @@ build_with_xcode() {
         return 1
     fi
 
-    local built_app="$DERIVED_DATA_PATH/Build/Products/Release/Typefree.app"
+    local built_app="$DERIVED_DATA_PATH/Build/Products/Release/Handfree.app"
     if [ ! -d "$built_app" ]; then
         echo "❌ Xcode build completed without producing $built_app"
         return 1
     fi
+
+    stamp_bundle "$built_app"
 
     if developer_id_available; then
         echo "🔏 Re-signing with Developer ID (same identity as official releases)..."
         resign_with_developer_id "$built_app"
         SIGNING_NOTE="Note: signed with Developer ID（与正式版同签名，覆盖安装不会重新要权限）."
         echo "✅ Signed with Developer ID identity"
+    elif [ "$RELEASE_BUILD" = "1" ]; then
+        echo "❌ RELEASE_BUILD=1 needs a Developer ID Application identity (DEVELOPER_ID_IDENTITY=\"$DEVELOPER_ID_IDENTITY\")."
+        return 1
     else
         local signing_line
         signing_line="$(codesign -dv --verbose=2 "$built_app" 2>&1 | awk -F= '/^Authority=Apple Development:/ { print $2; exit }')"
+        # stamp_bundle 改了 Info.plist、加了许可文件，外层要用同一身份重签
+        codesign --force --options runtime \
+            --entitlements "$SCRIPT_DIR/Resources/VoicePolish.entitlements" \
+            --sign "${signing_line:--}" "$built_app"
         SIGNING_NOTE="Note: build uses Xcode-managed signing (${signing_line:-Apple Development})."
         echo "✅ Signed with Xcode-managed Apple Development identity (Developer ID cert not found)"
     fi

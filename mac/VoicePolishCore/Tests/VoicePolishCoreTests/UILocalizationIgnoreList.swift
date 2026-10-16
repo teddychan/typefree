@@ -54,10 +54,10 @@ enum UILocalizationIgnoreList {
         // Settings: default trigger phrases built from a language name
         "用", "用{}", "翻译成{}", "翻成{}", "{}输出",
         // Settings: exported Markdown, clipboard text, file name
-        "# Typefree 转写记录\n\n",
+        "# Handfree 转写记录\n\n",
         "## {} · 问 AI\n**问：** {}\n\n{}\n\n",
         "问：{}\n\n{}",
-        "Typefree 转写记录 {} {}.md",
+        "Handfree 转写记录 {} {}.md",
         "最近7天",
         // CloudASRTranscriber: request uid, AppDelegate: matched inside warning text
         "豆包语音", "额度",

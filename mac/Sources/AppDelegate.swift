@@ -8,14 +8,16 @@ import VoicePolishCore
 
 /// 集中管理外部链接，换地址只改这里。
 enum AppLinks {
-    /// API key 图文教程页（官网教程，含火山 + 阿里完整图文步骤）。
+    /// API key 图文教程页（上游 Typefree 公开的教程，含火山 + 阿里完整图文步骤）。
     static let apiKeyGuideURL = "https://kdsz001.github.io/typefree/setup-guide.html"
-    /// 购买页（官网定价板块：年付会员银行卡自动续费 / 微信一次性年卡，Paddle 结账，付款后邮件自动发授权码）。
-    static let purchaseURL = "https://typefree.app/#pricing"
+    /// 购买页：Handfree 没有会员服务，留空（定价页入口只在有托管试用通道时出现）。
+    static let purchaseURL = ""
     /// 开源代码仓库（GPL-3.0，Mac 版源码在 mac/ 目录）。
-    static let sourceCodeURL = "https://github.com/kdsz001/typefree"
+    static let sourceCodeURL = "https://github.com/teddychan/typefree"
+    /// 上游项目（Handfree 基于它修改）。
+    static let upstreamURL = "https://github.com/kdsz001/typefree"
     /// Sparkle 更新源；同时作为 App 内「更新历史」的数据源（含各版本日期与更新说明）。
-    static let appcastURL = "https://typefree.app/appcast.xml"
+    static let appcastURL = "https://raw.githubusercontent.com/teddychan/typefree/main/docs/handfree/appcast.xml"
 }
 
 extension Bundle {
@@ -134,7 +136,7 @@ private final class TypefreeUpdateDialogController: NSWindowController, NSWindow
             backing: .buffered,
             defer: false
         )
-        window.title = "Typefree 更新"
+        window.title = "Handfree 更新"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
@@ -269,7 +271,7 @@ private final class TypefreeUpdateDialogController: NSWindowController, NSWindow
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
         let logo = makeWaveformMark(box: 30, corner: 8)
-        let brand = label("Typefree", size: 13.5, weight: .semibold, color: NSColor(hex: 0x111113))
+        let brand = label("Handfree", size: 13.5, weight: .semibold, color: NSColor(hex: 0x111113))
         header.addSubview(logo)
         header.addSubview(brand)
         let trailingHeaderView: NSView = {
@@ -602,7 +604,7 @@ private final class TypefreeUpdateReminderController: NSWindowController, NSWind
             backing: .buffered,
             defer: false
         )
-        window.title = "Typefree 更新"
+        window.title = "Handfree 更新"
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
@@ -922,7 +924,7 @@ private final class TypefreeUpdateUserDriver: NSObject, SPUUserDriver {
                 subtitle: "当前没有可安装的新版本。",
                 versionText: currentVersionText(),
                 notesTitle: "更新状态",
-                notes: "Typefree 会每天自动检查一次；有新版本时会先在后台下载好，再提醒你安装。",
+                notes: "Handfree 会每天自动检查一次；有新版本时会先在后台下载好，再提醒你安装。",
                 notesIsHTML: false,
                 primaryTitle: "好",
                 secondaryTitle: nil,
@@ -1070,7 +1072,7 @@ private final class TypefreeUpdateUserDriver: NSObject, SPUUserDriver {
         }
 
         UserDefaults.standard.set([key: Date()], forKey: Self.readyReminderDefaultsKey)   // 只留当前版本，旧版本的记录顺手清掉
-        presentReadyReminder(versionText: info.displayVersion.isEmpty ? "新版本" : "Typefree \(info.displayVersion)")
+        presentReadyReminder(versionText: info.displayVersion.isEmpty ? "新版本" : "Handfree \(info.displayVersion)")
     }
 
     private func presentReadyReminder(versionText: String) {
@@ -1136,7 +1138,7 @@ private final class TypefreeUpdateUserDriver: NSObject, SPUUserDriver {
 
     private func makeInfo(from item: SUAppcastItem, isReady: Bool, isDownloading: Bool) -> TypefreeUpdateInfo {
         TypefreeUpdateInfo(
-            title: item.title ?? "Typefree 新版本",
+            title: item.title ?? "Handfree 新版本",
             displayVersion: item.displayVersionString,
             buildVersion: item.versionString,
             releaseNotes: Self.releaseNotes(from: item),
@@ -1399,7 +1401,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
 
     func debugLog(_ message: String) {
         let logFile = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/VoicePolish.log")
+            .appendingPathComponent("Library/Logs/Handfree.log")
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm:ss.SSS"
         let timestamp = formatter.string(from: Date())
@@ -1442,7 +1444,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: debugLogPrivacyMigrationKey) else { return }
         let logFile = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Logs/VoicePolish.log")
+            .appendingPathComponent("Library/Logs/Handfree.log")
         let fileManager = FileManager.default
         do {
             if fileManager.fileExists(atPath: logFile.path) {
@@ -1661,7 +1663,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
         guard !isRecording else { return false }
         guard canStartRecording(showFeedback: feedback) else { return false }
         // 反馈页用：记下这次是在哪个软件里录的（定位「某个软件里不好用」）
-        if let name = NSWorkspace.shared.frontmostApplication?.localizedName, name != "Typefree" {
+        if let name = NSWorkspace.shared.frontmostApplication?.localizedName, name != "Handfree" {
             lastRecordingTargetApp = name
         }
         if isAutoTermCorrectionLearningEnabled {
@@ -2277,9 +2279,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
         mainMenu.addItem(appItem)
         let appMenu = NSMenu()
         appItem.submenu = appMenu
-        appMenu.addItem(withTitle: "隐藏 Typefree", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "隐藏 Handfree", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "退出 Typefree", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "退出 Handfree", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
         // 编辑菜单（让 Cmd+X/C/V/A/Z 生效）
         let editItem = NSMenuItem()
@@ -2583,7 +2585,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
 
     /// 最近 120 行调试日志（不含用户说的内容：日志里只有字数、耗时、软件名这类元信息）
     func debugLogTail() -> String {
-        let logFile = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/VoicePolish.log")
+        let logFile = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Logs/Handfree.log")
         guard let data = try? Data(contentsOf: logFile), let text = String(data: data, encoding: .utf8) else { return "" }
         let lines = text.split(separator: "\n", omittingEmptySubsequences: true)
         let tail = lines.suffix(120).joined(separator: "\n")
@@ -2689,7 +2691,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
         let alert = NSAlert()
         alert.messageText = "纠正上次结果"
         let displayText = lastText.count > 80 ? String(lastText.prefix(80)) + "..." : lastText
-        alert.informativeText = "Typefree 输出了：\n\(displayText)\n\n请在下方修改为正确的文字："
+        alert.informativeText = "Handfree 输出了：\n\(displayText)\n\n请在下方修改为正确的文字："
         alert.addButton(withTitle: "学习")
         alert.addButton(withTitle: "取消")
 
@@ -3000,7 +3002,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
             backing: .buffered,
             defer: false
         )
-        win.title = "Typefree"
+        win.title = "Handfree"
         win.titlebarAppearsTransparent = true
         win.titleVisibility = .hidden
         win.isMovableByWindowBackground = true
@@ -3119,7 +3121,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     private func buildWelcome(into stack: NSStackView) {
         stack.addArrangedSubview(makeBadge("🎙️"))
         stack.setCustomSpacing(26, after: stack.arrangedSubviews.last!)
-        stack.addArrangedSubview(makeTitle("欢迎使用 Typefree"))
+        stack.addArrangedSubview(makeTitle("欢迎使用 Handfree"))
         stack.addArrangedSubview(makeBody("按住快捷键说话，松手就贴上整理好的文字。简单几步就能开始。"))
         stack.setCustomSpacing(30, after: stack.arrangedSubviews.last!)
         stack.addArrangedSubview(makePrimaryButton("开始设置") { [weak self] in

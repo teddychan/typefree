@@ -23,7 +23,7 @@ class StatusBarController {
         menu.addItem(withTitle: "开始/停止录音", action: #selector(toggleRecording), keyEquivalent: "")
             .target = self
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "打开 Typefree", action: #selector(openSettingsCenter), keyEquivalent: "")
+        menu.addItem(withTitle: "打开 Handfree", action: #selector(openSettingsCenter), keyEquivalent: "")
             .target = self
         // 工单 #17：加词不用再进主窗口翻到词库页
         menu.addItem(withTitle: "个人词库…", action: #selector(openVocabulary), keyEquivalent: "")
@@ -44,7 +44,7 @@ class StatusBarController {
         menu.addItem(withTitle: "打开辅助功能设置", action: #selector(openAccessibilitySettings), keyEquivalent: "")
             .target = self
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "退出 Typefree", action: #selector(quitApp), keyEquivalent: "q")
+        menu.addItem(withTitle: "退出 Handfree", action: #selector(quitApp), keyEquivalent: "q")
             .target = self
         statusItem.menu = menu
 

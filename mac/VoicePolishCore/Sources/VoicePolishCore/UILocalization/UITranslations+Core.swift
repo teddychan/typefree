@@ -72,7 +72,7 @@ API Key 无效，请检查是否复制完整{}	Invalid API Key. Make sure you co
 云端识别返回无法解析	Couldn't parse the cloud recognition response	無法解析雲端辨識回傳內容
 网络错误：{}	Network error: {}	網路錯誤：{}
 识别超时	Recognition timed out	辨識逾時
-读不到钥匙串里的 Key · 重启 Typefree 再试，系统询问时点「允许」	Can't read the key from Keychain · Restart Typefree and try again; click “Allow” when macOS asks	讀不到鑰匙圈裡的 Key · 重新啟動 Typefree 再試，系統詢問時點「允許」
+读不到钥匙串里的 Key · 重启 Handfree 再试，系统询问时点「允许」	Can't read the key from Keychain · Restart Handfree and try again; click “Allow” when macOS asks	讀不到鑰匙圈裡的 Key · 重新啟動 Handfree 再試，系統詢問時點「允許」
 语音识别选的「{}」还没填 Key · 在「设置 → 模型」填上，或改选已填 Key 的「{}」	Speech recognition is set to “{}”, which has no key yet · Add one in “Settings → Model”, or switch to “{}”, which has a key	語音辨識選的「{}」還沒填 Key · 在「設定 → 模型」填上，或改選已填 Key 的「{}」
 本地模型还没启用 · 在「设置 → 模型」打开「启用本地模型」	Local model isn't enabled yet · Turn on “Enable Local Model” in “Settings → Model”	本機模型尚未啟用 · 在「設定 → 模型」開啟「啟用本機模型」
 请配置火山引擎的 bigasr_api_key，或阿里百炼的 dashscope_api_key	Configure Volcengine's bigasr_api_key or Alibaba Bailian's dashscope_api_key	請設定火山引擎的 bigasr_api_key，或阿里百鍊的 dashscope_api_key
@@ -97,7 +97,7 @@ API Key 无效，请检查是否复制完整{}	Invalid API Key. Make sure you co
 # InputStats.swift
 {}年{}月	{2}/{1}	{1}年{2}月
 # LicenseManager.swift
-激活校验失败，请联系 ray@typefree.app	Activation verification failed. Contact ray@typefree.app	啟用驗證失敗，請聯絡 ray@typefree.app
+激活校验失败	Activation verification failed	啟用驗證失敗
 返回解析失败	Couldn't parse the response	回傳內容解析失敗
 激活失败，请稍后重试	Activation failed. Try again later	啟用失敗，請稍後重試
 # LocalASRServer.swift

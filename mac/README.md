@@ -1,83 +1,84 @@
-# Typefree
+# Handfree — macOS source
 
-**macOS 上的 AI 语音输入法：按住快捷键说话，松手后文字已经整理好、贴进了光标处。**
+The complete macOS app, GPL-3.0 ([LICENSE](LICENSE)). Handfree is a modified version of
+[Typefree](https://github.com/kdsz001/typefree); see [NOTICE](../NOTICE) for what changed.
 
-[官网 typefree.app](https://typefree.app) · [下载 DMG](https://github.com/kdsz001/typefree/releases/latest/download/Typefree.dmg) · [API Key 配置教程](https://typefree.app/setup-guide.html) · [会员](https://typefree.app/#pricing)
+## Build
 
-> 这个目录（`mac/`）是 Typefree macOS 版的完整源码，以 GPL-3.0 开源。仓库根目录是官网；功能介绍和动画演示看[仓库首页](../README.md)，这里偏开发者说明。
-
-## 能做什么
-
-- **说话变文字**：按住快捷键（或鼠标长按）说话，松手即识别，AI 自动去口语、理顺句子、分段、加标点，直接输入到任何 App
-- **长按问 AI**：在空白处长按说一句问题，右上角面板给出联网回答，可续聊、可固定
-- **语音翻译 / 口令**：句首或句尾说「用英文」直接输出英文
-- **词库与纠错学习**：常用词可加进词库；识别错的词改过一次，下次自动认对
-- **历史记录**：所有输入本地加密保存，可导出，保留时长可设
-- **多家模型**：识别用火山引擎，润色用通义千问，自动路由质量与速度
-
-## 三种用法
-
-| | 说明 |
-|---|---|
-| **免费试用** | 官方签名版（官网 / GitHub Releases 的 DMG）含 7 天试用，零配置，走作者的服务器 |
-| **自带 Key** | 在「设置 → 模型」填入你自己的 API Key，**永久免费、不限字数**。费用走你自己的账户，Key 只存在本机钥匙串 |
-| **会员** | ¥188 / 年，不用申请任何 Key，识别、润色、问 AI 走作者的服务器。会员通道同样只在官方签名版里可用 |
-
-## 从源码构建
-
-要求：macOS 14.0+，Xcode 26.3（Swift 6）。
+Requires macOS 14.0+ and Xcode 26.3 (Swift 6).
 
 ```bash
 cd mac
-./build.sh                       # 产物在 dist/Typefree Install.app
-bash scripts/install_app.sh      # 安装到 /Applications，然后自己 open 一下
+./build.sh                       # dist/Handfree Install.app
+bash scripts/install_app.sh      # installs to /Applications/Handfree.app
+bash scripts/run-debug.sh        # "Handfree Debug" (com.dragonapp.handfree.macos.debug), updates off
+cd VoicePolishCore && swift test # core library tests
 ```
 
-也可以直接用 Xcode 打开 `VoicePolish.xcodeproj`，scheme `VoicePolish`。签名换成你自己的 Team 即可。
+Or open `VoicePolish.xcodeproj`, scheme `VoicePolish`.
 
-**自己编译的版本没有试用和会员通道**（服务器地址不在仓库里，见 `local.build.env.example`），装好后先到「设置 → 模型」填入自己的 API Key——[教程在这里](https://typefree.app/setup-guide.html)，几分钟就能拿到火山引擎的 Key。
+`build.sh` reads optional private settings from `local.build.env` (see `local.build.env.example`). Set
+`DEVELOPER_ID_IDENTITY` there to sign with your Developer ID; leave the trial variables empty — Handfree has
+no hosted trial server. Every build stamps `CFBundleVersion` with the git commit count (Sparkle compares it)
+and writes the same number into `TypefreeCustomBuild`, so About shows `<upstream>-custom-<build number>`. It
+also copies `LICENSE`, `NOTICE` and `THIRD_PARTY_LICENSES/` into `Contents/Resources/Licenses`.
 
-运行核心库测试：
+## Identity
+
+| | Release | Debug |
+|---|---|---|
+| Name | Handfree | Handfree Debug |
+| Bundle id | `com.dragonapp.handfree.macos` | `com.dragonapp.handfree.macos.debug` |
+| Team | `4AF3KGGV29` | signed locally by `run-debug.sh` |
+
+Data lives in `~/.config/handfree/` (fallback `~/Library/Application Support/Handfree/`), secrets in the
+Keychain under service `com.dragonapp.handfree.secret`, shared defaults in `group.com.dragonapp.handfree.shared`,
+and the log in `~/Library/Logs/Handfree.log` — none of it is shared with an installed Typefree.
+
+## Updates
+
+Sparkle reads `https://raw.githubusercontent.com/teddychan/typefree/main/docs/handfree/appcast.xml`
+([docs/handfree/appcast.xml](../docs/handfree/appcast.xml)), signed with the shared Dragon EdDSA key.
+
+## Release
 
 ```bash
-cd mac/VoicePolishCore && swift test
+cd mac
+bash scripts/release.sh            # dry run: build, notarize, package, write the appcast item locally
+bash scripts/release.sh --publish  # also push the tag and create the GitHub Release
 ```
 
-## 目录
+The script runs `build.sh` with `RELEASE_BUILD=1` (Developer ID signing with `--timestamp` and hardened
+runtime, nested Sparkle components first). It then notarizes and staples the app, and builds the two
+artifacts in `dist/release/<version>/`:
 
-- `Sources/` — macOS 状态栏 App（AppKit + SwiftUI）
-- `VoicePolishCore/` — 核心库（录音、云端识别、AI 润色、词库、历史加密），Swift Package
-- `Resources/` — 图标、entitlements
-- `build.sh` / `scripts/install_app.sh` — 本地构建与安装
+- `Handfree-<version>.zip` — the Sparkle update
+- `Handfree-<version>.pkg` — the notarized installer for people, which installs to `/Applications`
 
-不在这里的：iOS 版、Windows 版、试用服务器、激活服务、评测工具。
+It signs the zip with Sparkle's `sign_update` and adds an `<item>` at the top of
+`docs/handfree/appcast.xml`. A re-run replaces the item for the same build number.
 
-## 隐私
+- **Version:** `<CFBundleShortVersionString>-custom-<build number>` (e.g. `3.0.13-custom-112`), tag `v<version>`.
+  The build number is the git commit count, the same as `CFBundleVersion` and `sparkle:version`.
+- **Needs:** the `Developer ID Application` and `Developer ID Installer` certificates for team `4AF3KGGV29`
+  in the keychain (override with `DEVELOPER_ID_IDENTITY` / `INSTALLER_IDENTITY`), and the Sparkle EdDSA
+  private key in the login keychain. It also needs a notarytool API key, read from
+  `~/.claude/skills/update-macos-appstore/config.sh` or from `NOTARY_KEY_ID`, `NOTARY_ISSUER` and
+  `NOTARY_KEY_P8`.
+- **Publishing:** commit what you want to ship. Then run
+  `git tag v<version>` on that commit and `bash scripts/release.sh --publish` from a clean tree. That pushes
+  the tag and creates the GitHub Release with the zip, the pkg, `LICENSE.txt` and `NOTICE.txt`, which
+  GPL-3.0 requires us to ship. Last, commit the updated `docs/handfree/appcast.xml` and merge it to `main`;
+  the feed only goes live once the item is on `main`.
+- **Arm64 only:** `build.sh` builds for arm64 only, so the item carries
+  `sparkle:hardwareRequirements arm64`.
 
-- 你的 API Key 只保存在本机钥匙串，绝不上传
-- 自带 Key 时，音频直接发给你选的模型厂商，不经过作者的服务器
-- 试用期走作者的代理服务器，只转发、不保存音频和文本
-- 历史记录在本机加密存储
+## Layout
 
-完整隐私政策：[typefree.app/privacy](https://typefree.app/privacy.html)
+- `Sources/` — the menu-bar app (AppKit + SwiftUI)
+- `VoicePolishCore/` — core library (recording, speech recognition, AI cleanup, vocabulary, encrypted history)
+- `Resources/` — icon, entitlements, What's New page
+- `build.sh`, `scripts/` — build, install, debug build, release
 
-## 许可与商标
-
-代码以 [GNU GPL-3.0](LICENSE) 开源：你可以自由使用、修改、再分发，但基于它的软件也必须以 GPL 开源。
-
-**「Typefree」名称、图标与官网内容不在开源许可范围内**，请勿用于你自己发布的版本，以免用户混淆。
-
-## 参与
-
-- 欢迎提 [Issue](https://github.com/kdsz001/typefree/issues)：bug、想法、识别不准的例子都行
-- Pull Request 目前只接受小修（错字、明确的 bug、兼容性）。见 [CONTRIBUTING.md](CONTRIBUTING.md)
-
----
-
-## English
-
-Typefree is a voice-input app for macOS: hold a hotkey, speak, release — the text is cleaned up by an LLM (filler words removed, punctuation and paragraphs added) and typed into whatever app you're in. It also answers questions on long-press, translates to English on command, and learns your vocabulary.
-
-Bring your own API key (Volcengine for ASR, Qwen for polishing) and it's free with no limits. The signed build from [typefree.app](https://typefree.app) includes a 7-day zero-config trial; builds from this repo don't (the trial server address is not in the repo).
-
-Build: macOS 14.0+, Xcode 26.3 — `cd mac && ./build.sh`. Licensed under GPL-3.0; the Typefree name, icon and website are not covered by the license.
+Internal type and module names (`VoicePolish*`, `Typefree*`) are kept as upstream has them so merges from
+upstream stay small; they never appear in the UI.

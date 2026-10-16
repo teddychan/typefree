@@ -226,7 +226,7 @@ public final class CloudASRTranscriber {
     public static func hint(for issue: OwnKeyIssue) -> String {
         switch issue {
         case .keychainUnreadable:
-            return "读不到钥匙串里的 Key · 重启 Typefree 再试，系统询问时点「允许」"
+            return "读不到钥匙串里的 Key · 重启 Handfree 再试，系统询问时点「允许」"
         case .missingForCurrent(let current, let configured):
             return "语音识别选的「\(current.displayName)」还没填 Key · 在「设置 → 模型」填上，或改选已填 Key 的「\(configured.displayName)」"
         case .localModelDisabled:
