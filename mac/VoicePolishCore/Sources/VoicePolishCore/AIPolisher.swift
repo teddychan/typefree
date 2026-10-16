@@ -987,7 +987,7 @@ public class AIPolisher {
 
     private static func pendingLogFileURL() -> URL? {
         FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: "group.com.voicepolish.shared")?
+            .containerURL(forSecurityApplicationGroupIdentifier: ProcessingMode.appGroupSuiteName)?
             .appendingPathComponent("polish_log_pending.jsonl")
     }
 

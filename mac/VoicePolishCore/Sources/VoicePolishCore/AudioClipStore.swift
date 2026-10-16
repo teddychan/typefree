@@ -18,7 +18,7 @@ public final class AudioClipStore {
     }
 
     /// 默认仓库：<配置目录>/audio/
-    /// macOS = ~/.config/voicepolish/audio/；iOS = App Group 容器/audio/
+    /// macOS = ~/.config/handfree/audio/；iOS = App Group 容器/audio/
     public static func defaultStore(config: VoicePolishConfig = .shared) -> AudioClipStore {
         let dir = config.configDirectoryURL.appendingPathComponent("audio", isDirectory: true)
         return AudioClipStore(directory: dir, encryptor: HistoryCrypto.defaultEncryptor(), encryptNewFiles: true)

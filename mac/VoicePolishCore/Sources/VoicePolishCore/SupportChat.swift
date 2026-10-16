@@ -276,7 +276,7 @@ public final class SupportChatService {
             DispatchQueue.main.async { completion(.failure(.empty)) }
             return
         }
-        guard let url = URL(string: apiBase + path) else {
+        guard !apiBase.isEmpty, let url = URL(string: apiBase + path) else {
             DispatchQueue.main.async { completion(.failure(.network("地址错误"))) }
             return
         }
@@ -334,7 +334,7 @@ public final class SupportChatService {
     /// 本机还有没归属工单的老消息（工单上线前缓存的）时，从头拉一遍把归属补上。
     public func sync(completion: ((Bool) -> Void)? = nil) {
         guard hasThread, !syncing, let secret = defaults.string(forKey: kSecret),
-              let url = URL(string: apiBase + "/support/sync") else {
+              !apiBase.isEmpty, let url = URL(string: apiBase + "/support/sync") else {
             DispatchQueue.main.async { completion?(false) }
             return
         }

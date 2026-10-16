@@ -134,7 +134,7 @@ final class SupportChatView: NSView, NSTextViewDelegate {
     private func buildList() -> NSView {
         let root = NSView()
 
-        let header = makeHeader(eyebrow: "TYPEFREE / 反馈", title: "反馈",
+        let header = makeHeader(eyebrow: "HANDFREE / 反馈", title: "反馈",
                                 sub: "遇到问题或有建议，提交一个工单。开发者的回复会出现在对应工单里。")
         let newButton = VPButton(title: "提交工单", style: .primary, size: .regular, theme: theme,
                                  target: self, action: #selector(openNewForm))

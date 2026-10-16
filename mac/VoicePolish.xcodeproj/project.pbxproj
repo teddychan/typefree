@@ -40,7 +40,7 @@
 		092D93934C4E338C9A3010FD /* main.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		3AF574D65ABA315E5CB849D5 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		502CD7DBBAD698B6BCA49515 /* TextDelivery.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TextDelivery.swift; sourceTree = "<group>"; };
-		50556F9E801CA785EC3C893F /* Typefree.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Typefree.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		50556F9E801CA785EC3C893F /* Handfree.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Handfree.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		62A1F4D9C8B44754B1170002 /* SettingsWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		69C4DD4BE515831340317DBE /* StatusBarController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		7DD16C68DC13BE74C432E5BC /* OverlayWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OverlayWindow.swift; sourceTree = "<group>"; };
@@ -88,7 +88,7 @@
 		23D626EC0F33FFB79D25B9AC /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				50556F9E801CA785EC3C893F /* Typefree.app */,
+				50556F9E801CA785EC3C893F /* Handfree.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -169,7 +169,7 @@
 				5CE0965246842C22615F04BB /* Sparkle */,
 			);
 			productName = VoicePolish;
-			productReference = 50556F9E801CA785EC3C893F /* Typefree.app */;
+			productReference = 50556F9E801CA785EC3C893F /* Handfree.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -182,7 +182,7 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					DAF9611084299CF25E323AA3 = {
-						DevelopmentTeam = NHC4C4K7X7;
+						DevelopmentTeam = 4AF3KGGV29;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -296,7 +296,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				EXECUTABLE_NAME = Typefree;
+				EXECUTABLE_NAME = Handfree;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -317,7 +317,7 @@
 					"$(PROJECT_DIR)/CHeaders",
 				);
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Typefree;
+				INFOPLIST_KEY_CFBundleDisplayName = Handfree;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -328,8 +328,8 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.voicepolish.app;
-				PRODUCT_NAME = Typefree;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dragonapp.handfree.macos;
+				PRODUCT_NAME = Handfree;
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
@@ -349,19 +349,19 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 2.0.0;
-				DEVELOPMENT_TEAM = NHC4C4K7X7;
+				DEVELOPMENT_TEAM = 4AF3KGGV29;
 				ENABLE_HARDENED_RUNTIME = NO;
-				EXECUTABLE_NAME = "Typefree Debug";
+				EXECUTABLE_NAME = "Handfree Debug";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Typefree Debug";
+				INFOPLIST_KEY_CFBundleDisplayName = "Handfree Debug";
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.0;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.voicepolish.app.debug;
-				PRODUCT_MODULE_NAME = Typefree;
-				PRODUCT_NAME = "Typefree Debug";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dragonapp.handfree.macos.debug;
+				PRODUCT_MODULE_NAME = Handfree;
+				PRODUCT_NAME = "Handfree Debug";
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_INCLUDE_PATHS = "";
@@ -380,18 +380,18 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 2.0.0;
-				DEVELOPMENT_TEAM = NHC4C4K7X7;
+				DEVELOPMENT_TEAM = 4AF3KGGV29;
 				ENABLE_HARDENED_RUNTIME = NO;
-				EXECUTABLE_NAME = Typefree;
+				EXECUTABLE_NAME = Handfree;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Typefree;
+				INFOPLIST_KEY_CFBundleDisplayName = Handfree;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.0;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.voicepolish.app;
-				PRODUCT_NAME = Typefree;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dragonapp.handfree.macos;
+				PRODUCT_NAME = Handfree;
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_INCLUDE_PATHS = "";
@@ -443,7 +443,7 @@
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				EXECUTABLE_NAME = Typefree;
+				EXECUTABLE_NAME = Handfree;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -458,7 +458,7 @@
 					"$(PROJECT_DIR)/CHeaders",
 				);
 				INFOPLIST_FILE = Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Typefree;
+				INFOPLIST_KEY_CFBundleDisplayName = Handfree;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -469,8 +469,8 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = com.voicepolish.app;
-				PRODUCT_NAME = Typefree;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dragonapp.handfree.macos;
+				PRODUCT_NAME = Handfree;
 				SDKROOT = macosx;
 				SUPPORTED_PLATFORMS = macosx;
 				SWIFT_INCLUDE_PATHS = "$(inherited) $(PROJECT_DIR)/CHeaders";

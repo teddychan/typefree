@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Handfree</title>
+    <link>https://raw.githubusercontent.com/teddychan/typefree/main/docs/handfree/appcast.xml</link>
+    <description>Handfree for macOS updates</description>
+    <language>en</language>
+    <!-- Items are added per release, newest first, each signed with the shared Dragon EdDSA key (sign_update). -->
+  </channel>
+</rss>

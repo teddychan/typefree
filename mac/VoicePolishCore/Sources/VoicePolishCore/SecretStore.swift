@@ -34,7 +34,7 @@ public final class KeychainSecretStore: SecretStoring {
 
     /// - accessGroup: iOS 跨主 App 与键盘扩展共享时传入解析后的组名（如 `<TeamID>.com.voicepolish.shared`）；
     ///   macOS 必须传 nil。
-    public init(service: String = "com.voicepolish.secret", accessGroup: String? = nil) {
+    public init(service: String = "com.dragonapp.handfree.secret", accessGroup: String? = nil) {
         self.service = service
         self.accessGroup = accessGroup
     }

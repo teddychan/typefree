@@ -6,7 +6,7 @@ import IOKit
 import UIKit
 #endif
 
-/// 授权管理：对接自家 Cloudflare Worker（api.typefree.app）。
+/// 授权管理：上游 Typefree 对接其 Cloudflare Worker。Handfree 没有托管服务器（defaultAPIBase 为空），不会发出任何授权请求。
 ///
 /// - `activate`：把「激活码 + 设备指纹」发给服务器，服务器在账本里核销名额后
 ///   用 Ed25519 私钥对 "<code>:<device_id>" 签名返回 token。
@@ -28,7 +28,8 @@ public final class LicenseManager {
     // 2026-06-10 已验证配对。换钥前必须想清楚：换了 = 所有已发 token 全部失效。
     public static let embeddedPublicKeyBase64 = "abCefT2wij5lUaJlIBi0y+qhv/OkJ7QfwQK/2OsePXs="
 
-    static let defaultAPIBase = "https://api.typefree.app"
+    /// Handfree：没有托管服务器。为空时不发任何请求（UserDefaults `license.apiBase` 仍可本地联调覆盖）。
+    static let defaultAPIBase = ""
 
     private let defaults: UserDefaults
     private let session: URLSession
@@ -278,7 +279,7 @@ public final class LicenseManager {
                                   tokenBase64: token,
                                   publicKeyBase64: Self.embeddedPublicKeyBase64) else {
                     DispatchQueue.main.async {
-                        completion(.failure(.network("激活校验失败，请联系 ray@typefree.app")))
+                        completion(.failure(.network("激活校验失败")))
                     }
                     return
                 }
@@ -414,7 +415,7 @@ public final class LicenseManager {
     private func post(path: String,
                       body: [String: String],
                       completion: @escaping (Result<[String: Any], ActivationError>) -> Void) {
-        guard let url = URL(string: apiBase + path) else {
+        guard !apiBase.isEmpty, let url = URL(string: apiBase + path) else {
             completion(.failure(.network("地址错误")))
             return
         }

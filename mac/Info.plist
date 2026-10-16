@@ -32,15 +32,15 @@
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Typefree 需要麦克风权限来录制语音并转写为文字。</string>
+	<string>Handfree 需要麦克风权限来录制语音并转写为文字。</string>
 	<key>SUAutomaticallyUpdate</key>
 	<true/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://typefree.app/appcast.xml</string>
+	<string>https://raw.githubusercontent.com/teddychan/typefree/main/docs/handfree/appcast.xml</string>
 	<key>SUPublicEDKey</key>
-	<string>+khgUWwhbTRDxxcApk3BhYRR/t0dHd7D7oUwOoHzYf8=</string>
+	<string>p+F/ivF5bAYcmuNuCMNHcRv123A6LHFpCBagFm7Adu8=</string>
 	<key>SUScheduledCheckInterval</key>
 	<integer>86400</integer>
 	<key>VPTrialAPIBase</key>

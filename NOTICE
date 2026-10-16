@@ -1,0 +1,29 @@
+Handfree for macOS
+Copyright (C) 2026 Teddy Chan
+
+Handfree is a modified version of Typefree (https://github.com/kdsz001/typefree),
+copyright (C) Rui Wang (kdsz001) and its contributors, released under the
+GNU General Public License version 3. Handfree is distributed under the same
+license; see mac/LICENSE.
+
+Modifications by Teddy Chan, starting October 2026, include:
+  - renamed to Handfree, with its own bundle identifier, icon and data locations
+  - own Sparkle update feed; the upstream hosted trial, membership and feedback
+    services are disabled (Handfree talks only to the model providers you configure)
+  - custom model providers (OpenAI, Gemini, Claude, custom gateway)
+The full history of changes is in the git log of
+https://github.com/teddychan/typefree.
+
+"Typefree", its name, icon and website content belong to their owner and are not
+covered by the GPL. Handfree is not affiliated with or endorsed by Typefree.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+Third-party software
+--------------------
+Sparkle (https://sparkle-project.org) — MIT License.
+Copyright (c) 2006-2013 Andy Matuschak and others. Full text, including the
+licenses of the components Sparkle bundles (bsdiff, sais-lite, ed25519 and
+others): mac/THIRD_PARTY_LICENSES/Sparkle-2.9.3-LICENSE.txt

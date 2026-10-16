@@ -8,7 +8,7 @@ public final class VoicePolishConfig {
     private let configPath: URL
     private let secrets: SecretStoring
 
-    /// 配置目录为什么没用默认位置（~/.config/voicepolish）。nil = 用的默认位置。
+    /// 配置目录为什么没用默认位置（~/.config/handfree）。nil = 用的默认位置。
     /// 工单 #9：用户的 ~/.config 被 root 占着，App 建不了自己的文件夹，设置一次都没存成功过，每次启动都像第一次。
     public let storageFallbackReason: String?
     /// 最近一次 config.json 写失败的原因（写成功会清掉）。首页「配置健康」据此亮「设置无法保存」。
@@ -30,21 +30,21 @@ public final class VoicePolishConfig {
     public var configFileURL: URL { configPath }
     public var configDirectoryURL: URL { configDir }
 
-    /// 默认初始化：macOS 使用 ~/.config/voicepolish/
+    /// 默认初始化：macOS 使用 ~/.config/handfree/
     private convenience init() {
         #if os(iOS)
         // iOS：使用 App Group 共享容器；钥匙串用共享 access group，让主 App 与键盘扩展互通
         let containerURL = FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: "group.com.voicepolish.shared")
+            .containerURL(forSecurityApplicationGroupIdentifier: ProcessingMode.appGroupSuiteName)
             ?? FileManager.default.temporaryDirectory
         self.init(configDir: containerURL,
-                  secrets: KeychainSecretStore(accessGroup: "NHC4C4K7X7.com.voicepolish.shared"))
+                  secrets: KeychainSecretStore(accessGroup: "4AF3KGGV29.com.dragonapp.handfree.shared"))
         #else
         // macOS：使用用户主目录（钥匙串不设 access group）；建不了/写不进就退到 Application Support
         let home = FileManager.default.homeDirectoryForCurrentUser
         let resolved = Self.resolveStorageDirectory(
-            primary: home.appendingPathComponent(".config/voicepolish"),
-            fallback: home.appendingPathComponent("Library/Application Support/Typefree")
+            primary: home.appendingPathComponent(".config/handfree"),
+            fallback: home.appendingPathComponent("Library/Application Support/Handfree")
         )
         self.init(configDir: resolved.directory, fallbackReason: resolved.fallbackReason)
         #endif

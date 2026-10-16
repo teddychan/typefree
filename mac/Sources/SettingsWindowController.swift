@@ -321,7 +321,7 @@ final class PolishHistoryStore {
             .compactMap { HistoryCrypto.decodeLine(String($0), enc: enc) }
             .filter { AIPolisher.shouldKeepPolishLog($0, retention: retention) }
         guard !logs.isEmpty else { return nil }
-        var out = "# Typefree 转写记录\n\n"
+        var out = "# Handfree 转写记录\n\n"
         for log in logs {
             if log.isAsk {
                 out += "## \(log.time) · 问 AI\n**问：** \(log.asr)\n\n\(log.output.trimmingCharacters(in: .whitespacesAndNewlines))\n\n"
@@ -1231,7 +1231,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             backing: .buffered,
             defer: false
         )
-        window.title = "Typefree"  // 仅供系统辅助功能/窗口菜单，标题栏不显示（侧栏已有带 logo 的名字，避免重复）
+        window.title = "Handfree"  // 仅供系统辅助功能/窗口菜单，标题栏不显示（侧栏已有带 logo 的名字，避免重复）
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
         window.minSize = NSSize(width: 1040, height: 600)   // 1040 以下统计大数字会被挤，锁住下限
@@ -1534,11 +1534,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let historyCount = quickHistoryLineCount()
         let vocabCount = vocabularyEntries.count
 
-        let unread = SupportChatService.shared.unreadCount
         let groups: [(String?, [(Page, String?)])] = [
             ("工作台", [(.home, nil), (.history, historyCount > 0 ? "\(historyCount)" : nil)]),
-            ("配置", [(.vocabulary, vocabCount > 0 ? "\(vocabCount)" : nil), (.model, nil), (.explore, nil), (.settings, nil),
-                     (.support, unread > 0 ? "\(unread) 条新回复" : nil)]),
+            ("配置", [(.vocabulary, vocabCount > 0 ? "\(vocabCount)" : nil), (.model, nil), (.explore, nil), (.settings, nil)]),   // Handfree：无托管服务器，去掉「反馈」页
             (nil, [(.about, nil)]),
         ]
 
@@ -1602,7 +1600,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let isGenesis = LicenseManager.shared.isGenesis
         let logo = makeWaveformMark(box: isGenesis ? 40 : 28, corner: isGenesis ? 11 : 8, boxColor: theme.accent, waveColor: theme.onAccent)
 
-        let title = NSTextField(labelWithString: "Typefree")
+        let title = NSTextField(labelWithString: "Handfree")
         title.font = .systemFont(ofSize: 14, weight: .semibold)
         title.textColor = theme.text
         title.translatesAutoresizingMaskIntoConstraints = false
@@ -1626,7 +1624,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         var genesisTag: NSView?
         if isGenesis {
             let tag = makeTag("创世用户", bg: Self.softFill, fg: theme.text, size: 10)
-            tag.toolTip = "3.0 之前就支持 Typefree 的用户，谢谢你一路同行"
+            tag.toolTip = "3.0 之前就支持 Handfree 的用户，谢谢你一路同行"
             header.addSubview(tag)
             genesisTag = tag
         }
@@ -2188,7 +2186,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     // MARK: - Page: Home
 
     private func buildHome(into stack: NSStackView) {
-        stack.addArrangedSubview(pageHeader(eyebrow: "TYPEFREE / 首页", title: "首页",
+        stack.addArrangedSubview(pageHeader(eyebrow: "HANDFREE / 首页", title: "首页",
                                              sub: "自然说话，清楚输入。这是你的语音工作台。"))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
@@ -2875,7 +2873,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
         let sheet = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 620),
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        sheet.title = "Typefree"
+        sheet.title = "Handfree"
         sheet.titlebarAppearsTransparent = true
         sheet.isReleasedWhenClosed = false
         upgradeSheet = sheet
@@ -2908,7 +2906,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         headerStack.orientation = .vertical
         headerStack.alignment = .centerX
         headerStack.spacing = 8
-        let title = label("Typefree · 自然说话，清楚输入", size: 21, weight: .bold, color: theme.text)
+        let title = label("Handfree · 自然说话，清楚输入", size: 21, weight: .bold, color: theme.text)
         title.alignment = .center
         // 开源（Ray 2026-09-14：付费页要凸显开源）：软件本身开源免费，会员买的是免配置的服务
         let ossRow = NSStackView()
@@ -3458,7 +3456,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         switch err {
         case .emptyKey:      return "请先粘贴授权码"
         case .invalidKey:    return "授权码无效，请检查是否复制完整"
-        case .limitReached:  return "这个授权码已在另一台 Mac 上激活。换新机请到 typefree.app/recover 重置后再试。"
+        case .limitReached:  return "这个授权码已在另一台 Mac 上激活。"
         case .network(let m): return "激活失败：\(m)"
         }
     }
@@ -3662,7 +3660,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     // MARK: - Page: Explore
 
     private func buildExplore(into stack: NSStackView) {
-        stack.addArrangedSubview(pageHeader(eyebrow: "TYPEFREE / 探索", title: "探索",
+        stack.addArrangedSubview(pageHeader(eyebrow: "HANDFREE / 探索", title: "探索",
                                              sub: "发现新的输入和表达方式，按需开启。"))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
         stack.addArrangedSubview(makeExploreCard(
@@ -3765,7 +3763,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     // MARK: - Page: Settings
 
     private func buildSettings(into stack: NSStackView) {
-        stack.addArrangedSubview(pageHeader(eyebrow: "TYPEFREE / 设置", title: "设置",
+        stack.addArrangedSubview(pageHeader(eyebrow: "HANDFREE / 设置", title: "设置",
                                              sub: "管理启动、音频、快捷键和权限。"))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
@@ -3986,7 +3984,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let card = makeCard()
 
         let title = label("在 Dock 中显示", size: 14, weight: .medium, color: theme.text)
-        let desc = label("关闭后 Dock 和 ⌘Tab 里不再出现 Typefree，可从屏幕顶部菜单栏的图标打开。",
+        let desc = label("关闭后 Dock 和 ⌘Tab 里不再出现 Handfree，可从屏幕顶部菜单栏的图标打开。",
                          size: 12, weight: .regular, color: theme.text3)
         desc.maximumNumberOfLines = 0
 
@@ -4227,7 +4225,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
     private func buildModel(into stack: NSStackView) {
         stack.addArrangedSubview(pageHeader(
-            eyebrow: "TYPEFREE / 模型", title: "模型设置",
+            eyebrow: "HANDFREE / 模型", title: "模型设置",
             sub: "用你自己的 API。语音直连你选的服务商，没有中间商；历史记录只存在你本机。"))
         stack.setCustomSpacing(18, after: stack.arrangedSubviews.last!)
 
@@ -5138,7 +5136,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let card = makeCard()
 
         let title = label("开机时自动启动", size: 14, weight: .medium, color: theme.text)
-        let desc = label("登录后自动在后台打开 Typefree，不用每次手动启动。", size: 12, weight: .regular, color: theme.text3)
+        let desc = label("登录后自动在后台打开 Handfree，不用每次手动启动。", size: 12, weight: .regular, color: theme.text3)
         desc.maximumNumberOfLines = 0
 
         let toggle = VPToggle(theme: theme, target: self, action: #selector(launchAtLoginChanged(_:)))
@@ -5760,7 +5758,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         processingIndex = nil
 
         let header = makePageHeaderRow(
-            eyebrow: "TYPEFREE / 历史记录",
+            eyebrow: "HANDFREE / 历史记录",
             title: "历史记录",
             sub: "文字与音频都只存在本机，没有中间商。重新转写会把音频发送到你配置的识别服务商并产生费用。",
             buttonTitle: "清空历史",
@@ -5785,7 +5783,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
                 delegate.debugLog("[history] \(stored) stored entries, none readable (key readable=\(keyReadable))")
                 stack.addArrangedSubview(makeEmptyState(keyReadable
                     ? "有 \(stored) 条历史记录暂时读不出来（解密钥匙可能已更换）。记录还在本机，请不要清空历史，可以在「反馈」里联系我们。"
-                    : "有 \(stored) 条历史记录暂时读不出来：没能从系统「钥匙串」取到解密钥匙。记录都还在，请不要清空历史。\n重启电脑后打开 Typefree，系统询问时输入开机密码并点「始终允许」。"))
+                    : "有 \(stored) 条历史记录暂时读不出来：没能从系统「钥匙串」取到解密钥匙。记录都还在，请不要清空历史。\n重启电脑后打开 Handfree，系统询问时输入开机密码并点「始终允许」。"))
                 return
             }
             stack.addArrangedSubview(makeEmptyState("还没有历史记录。完成一次语音输入后，这里会显示最近的转写结果。"))
@@ -6202,7 +6200,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             return
         }
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Typefree-\(allHistoryEntries[sender.tag].time.replacingOccurrences(of: ":", with: "-")).m4a"
+        panel.nameFieldStringValue = "Handfree-\(allHistoryEntries[sender.tag].time.replacingOccurrences(of: ":", with: "-")).m4a"
         panel.begin { resp in
             guard resp == .OK, let dst = panel.url else { return }
             try? FileManager.default.removeItem(at: dst)
@@ -6460,7 +6458,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let df = DateFormatter()
         df.dateFormat = "yyyy-MM-dd"
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "Typefree 转写记录 \(rangeTag) \(df.string(from: Date())).md"
+        panel.nameFieldStringValue = "Handfree 转写记录 \(rangeTag) \(df.string(from: Date())).md"
         panel.message = "导出的文件是明文（未加密），请妥善保管。"
         panel.begin { [weak self] resp in
             guard resp == .OK, let dst = panel.url else { return }
@@ -6549,7 +6547,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         loadVocabularyEntries()
 
         let header = pageHeader(
-            eyebrow: "TYPEFREE / 个人词库",
+            eyebrow: "HANDFREE / 个人词库",
             title: "个人词库",
             sub: "添加你常说的人名、产品名、专有名词，语音识别会优先认出它们。你改过的错词也会自动学进来。"
         )
@@ -7041,7 +7039,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
     // MARK: - Page: About
 
     private func buildAbout(into stack: NSStackView) {
-        stack.addArrangedSubview(pageHeader(eyebrow: "TYPEFREE / 关于", title: "关于",
+        stack.addArrangedSubview(pageHeader(eyebrow: "HANDFREE / 关于", title: "关于",
                                              sub: "语音转文字，并用 AI 帮你整理成可直接使用的文本。"))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
 
@@ -7051,7 +7049,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         let logoBox = makeWaveformMark(box: 64, corner: 16, boxColor: theme.accent, waveColor: theme.onAccent)
 
         let info = Bundle.main.infoDictionary
-        let name = label(info?["CFBundleDisplayName"] as? String ?? "Typefree", size: 22, weight: .semibold, color: theme.text)
+        let name = label(info?["CFBundleDisplayName"] as? String ?? "Handfree", size: 22, weight: .semibold, color: theme.text)
         var version = info?["CFBundleShortVersionString"] as? String
             ?? info?["CFBundleVersion"] as? String
             ?? "本地开发版"
@@ -7101,6 +7099,30 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
 
         mount(logoStack, in: card)
         stack.addArrangedSubview(card)
+
+        // GPL-3.0 §5：注明改动与出处，并在界面里给出许可证、无担保声明与源码地址
+        stack.setCustomSpacing(16, after: card)
+        let legalCard = makeCard()
+        let legal = label("Handfree 基于 Typefree（Rui Wang / kdsz001）修改，由 Teddy Chan 于 2026 年起维护。\n"
+                          + "本程序是自由软件，按 GNU 通用公共许可证第 3 版（GPL-3.0）发布，不提供任何担保。"
+                          + "「Typefree」名称与图标属于原作者，Handfree 与其无关联。",
+                          size: 12, weight: .regular, color: theme.text3)
+        legal.maximumNumberOfLines = 0
+        let links = NSStackView()
+        links.orientation = .horizontal
+        links.spacing = 16
+        links.addArrangedSubview(makeLinkButton(title: "源代码 →", urlString: AppLinks.sourceCodeURL))
+        links.addArrangedSubview(makeLinkButton(title: "上游项目 →", urlString: AppLinks.upstreamURL))
+        links.addArrangedSubview(makeLinkButton(title: "GPL-3.0 许可证 →", urlString: "https://www.gnu.org/licenses/gpl-3.0.html"))
+        let legalStack = NSStackView()
+        legalStack.orientation = .vertical
+        legalStack.alignment = .leading
+        legalStack.spacing = 10
+        legalStack.edgeInsets = NSEdgeInsets(top: 16, left: 20, bottom: 16, right: 20)
+        legalStack.addArrangedSubview(legal)
+        legalStack.addArrangedSubview(links)
+        mount(legalStack, in: legalCard)
+        stack.addArrangedSubview(legalCard)
     }
 
     @objc private func checkForUpdatesTapped(_ sender: NSButton) {
