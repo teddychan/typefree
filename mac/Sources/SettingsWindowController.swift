@@ -3773,6 +3773,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         stack.addArrangedSubview(pageHeader(eyebrow: "TYPEFREE / 设置", title: "设置",
                                              sub: "管理启动、音频、快捷键和权限。"))
         stack.setCustomSpacing(20, after: stack.arrangedSubviews.last!)
+        addUILanguageSection(to: stack)   // fork: UI display language
 
         let launchTitle = sectionTitle("启动")
         stack.addArrangedSubview(launchTitle)
@@ -4032,6 +4033,47 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
             NSApp.activate(ignoringOtherApps: true)
             self?.window?.makeKeyAndOrderFront(nil)
         }
+    }
+
+    // MARK: Fork: UI display language (strings are translated at display time, see UILocalizer)
+
+    private func addUILanguageSection(to stack: NSStackView) {
+        let title = sectionTitle("语言 · Language")
+        stack.addArrangedSubview(title)
+        stack.setCustomSpacing(8, after: title)
+        let card = makeCard()
+        let name = label("界面语言", size: 14, weight: .medium, color: theme.text)
+        let desc = label("选「跟随 macOS」时按系统首选语言显示，没有匹配的语言就用英文。已打开的其他窗口重新打开后更新。",
+                         size: 12, weight: .regular, color: theme.text3)
+        desc.maximumNumberOfLines = 0
+        let items = UILanguage.allCases.map { VPDropdown.Item(value: $0.rawValue, title: $0.pickerTitle) }
+        let popup = VPDropdown(items: items, selectedValue: UILanguage.preference.rawValue,
+                               trackBg: theme.card, trackBorder: Self.dropdownBorder,
+                               textColor: theme.text, chevronColor: theme.text3)
+        popup.onSelect = { [weak self] value in
+            guard let self, let language = UILanguage(rawValue: value), language != UILanguage.preference else { return }
+            UILanguage.preference = language
+            // Rebuild after the menu closes: every page and the sidebar come back in the new language
+            DispatchQueue.main.async {
+                self.rebuildSidebar()
+                self.reload()
+            }
+        }
+        popup.widthAnchor.constraint(equalToConstant: 170).isActive = true
+        let textStack = NSStackView(views: [name, desc])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 2
+        textStack.setHuggingPriority(.defaultLow, for: .horizontal)
+        let row = NSStackView(views: [textStack, NSView(), popup])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.distribution = .fill
+        row.spacing = 16
+        row.edgeInsets = NSEdgeInsets(top: 16, left: 20, bottom: 16, right: 20)
+        mount(row, in: card)
+        stack.addArrangedSubview(card)
+        stack.setCustomSpacing(24, after: card)
     }
 
     @objc private func mainWindowAppearanceChanged(_ sender: VPSegmentedControl) {

@@ -1,5 +1,6 @@
 import Cocoa
 import QuartzCore
+import VoicePolishCore
 
 enum OverlayState {
     case recording
@@ -378,6 +379,7 @@ class OverlayWindow {
                                 accent: CapsuleAccent?,
                                 seconds: TimeInterval?,
                                 actions: [CapsuleAction] = []) {
+        let message = message.uiLocalized   // fork: translate before measuring the capsule width
         hideLearnedWindow()
         hide()
         guard let screen = preferredScreen() else { return }
@@ -491,6 +493,7 @@ class OverlayWindow {
 
     /// 胶囊内的圆角按钮：primary=白底黑字主按钮，否则白 14% 透明底白字次要按钮。
     private func makePillButton(title: String, primary: Bool, action: Selector, systemImage: String? = nil) -> NSButton {
+        let title = title.uiLocalized   // fork: translate before measuring the button width
         if let systemImage {
             // 复用录音对勾的尺寸、白底和悬停/按下效果，只替换图标。
             let button = CapsuleActionButton(role: .finish, style: .mono, target: self, action: action)
@@ -1075,7 +1078,7 @@ class SiriCapsuleView: NSView {
         guard case .recording = currentState, !cancelArmed else { return }
         captionRestore?.cancel()
         showBars(false)
-        thinkTextLayer.string = text
+        thinkTextLayer.string = text.uiLocalized
         thinkTextLayer.opacity = 1
         thinkTextLayer.isHidden = false
         let work = DispatchWorkItem { [weak self] in

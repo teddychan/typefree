@@ -1,5 +1,6 @@
 import Cocoa
 import WebKit
+import VoicePolishCore
 
 /// 3.0 新功能引导：`Resources/WhatsNewGuide.html` 里的动画演示（鼠标长按说话 / 随时问 AI / 语音翻译）。
 /// 不单独开窗：盖在设置主窗口的内容上，尺寸随窗口；没看完不能进正式页面（看完记版本号）。
@@ -69,7 +70,10 @@ final class WhatsNewGuideView: NSView, WKScriptMessageHandler, WKNavigationDeleg
             return nil
         }
 
-        if let url = Bundle.main.url(forResource: "WhatsNewGuide", withExtension: "html") {
+        if let url = Bundle.main.url(forResource: "WhatsNewGuide", withExtension: "html"),
+           UILanguage.effective != .simplifiedChinese, let html = try? String(contentsOf: url, encoding: .utf8) {
+            web.loadHTMLString(UILocalizer.localizeHTML(html), baseURL: url.deletingLastPathComponent())   // fork: UI language
+        } else if let url = Bundle.main.url(forResource: "WhatsNewGuide", withExtension: "html") {
             web.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         } else {
             // 资源缺失：不能留一块空白遮罩
@@ -89,7 +93,7 @@ final class WhatsNewGuideView: NSView, WKScriptMessageHandler, WKNavigationDeleg
     ///   - onlyThisFeature: 只走这一个功能的动作（探索页「看演示」），不串到别的功能
     func present(feature: WhatsNewGuide.Feature, finishTitle: String, onlyThisFeature: Bool = false) {
         finished = false
-        let cmd = "window.__guide && window.__guide.go(\(feature.rawValue), \(Self.jsString(finishTitle)), \(onlyThisFeature))"
+        let cmd = "window.__guide && window.__guide.go(\(feature.rawValue), \(Self.jsString(finishTitle.uiLocalized)), \(onlyThisFeature))"
         if loaded { webView.evaluateJavaScript(cmd) } else { pendingCommand = cmd }
     }
 

@@ -1455,6 +1455,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, SettingsWindowDelegate, SPUU
     }
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        AppKitUILocalization.install()   // fork: translate UI text into the chosen display language
+        UILocalizer.missHandler = { [weak self] text in self?.debugLog("[UI 未翻译] \(text)") }
         // 用户关了「在 Dock 中显示」：在 Dock 图标出现前就切走，免得启动时闪一下
         DockIcon.apply()
     }

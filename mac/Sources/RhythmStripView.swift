@@ -106,7 +106,7 @@ final class RhythmStripView: NSView {
         let weeks = days.count / 7
         let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: theme.text3]
         for w in 0..<weeks {
-            let text = w == weeks - 1 ? "本周" : "\(weeks - 1 - w) 周前"
+            let text = (w == weeks - 1 ? "本周" : "\(weeks - 1 - w) 周前").uiLocalized
             let s = NSAttributedString(string: text, attributes: attrs)
             let width = s.size().width
             let x = slot * 7 * CGFloat(w) + slot * 3.5 - width / 2
@@ -116,7 +116,7 @@ final class RhythmStripView: NSView {
         // 悬停信息：写在周标签那一行的右端
         if let h = hoverIndex, h < days.count {
             let attrs: [NSAttributedString.Key: Any] = [.font: NSFont.systemFont(ofSize: 11, weight: .medium), .foregroundColor: theme.text]
-            let s = NSAttributedString(string: hoverText(days[h]), attributes: attrs)
+            let s = NSAttributedString(string: hoverText(days[h]).uiLocalized, attributes: attrs)
             let w = s.size().width
             let bg = NSRect(x: bounds.width - w - 12, y: rowHeight - 2, width: w + 12, height: labelHeight + 4)
             theme.card.setFill(); bg.fill()   // 盖住底下的周标签

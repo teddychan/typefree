@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VoicePolishCore
 
 /// 「长按问 AI」的回答面板。做法与 trade-capture 的采访浮窗一致：
 /// 通知中心同款的 .popover 磨砂材质 + maskImage 圆角、从屏幕右缘滑入、贴右上角、
@@ -615,7 +616,7 @@ struct AnswerView: View {
                 .truncationMode(.tail)
             Spacer(minLength: 8)
             HoverIconButton(systemName: model.pinned ? "pin.fill" : "pin", tint: model.pinned ? accent : nil, action: onTogglePin)
-                .help("固定面板")
+                .help("固定面板".uiLocalized)
             HoverIconButton(systemName: "xmark", tint: nil, action: onClose)
         }
         .padding(.vertical, 15)
@@ -657,7 +658,7 @@ struct AnswerView: View {
                 .fill(accent)
                 .frame(width: 4, height: 30)
             VStack(alignment: .leading, spacing: 2) {
-                Text(model.recording ? "正在听…" : (model.turns.count > 1 ? "问 AI · 第 \(headerTurn + 1) 轮" : "问 AI"))
+                Text((model.recording ? "正在听…" : (model.turns.count > 1 ? "问 AI · 第 \(headerTurn + 1) 轮" : "问 AI")).uiLocalized)
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(accent)
                 Text(model.turns.indices.contains(headerTurn) ? model.turns[headerTurn].question : "")
@@ -669,7 +670,7 @@ struct AnswerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
             HoverIconButton(systemName: model.pinned ? "pin.fill" : "pin", tint: model.pinned ? accent : nil, action: onTogglePin)
-                .help(model.pinned ? "已固定：下次说话时不会自动收起" : "固定面板")
+                .help((model.pinned ? "已固定：下次说话时不会自动收起" : "固定面板").uiLocalized)
             HoverIconButton(systemName: "xmark", tint: nil, action: onClose)
         }
     }
@@ -691,7 +692,7 @@ struct AnswerView: View {
         HStack(spacing: 4) {
             switch model.footer {
             case .idle:
-                Text("长按任意位置继续提问")
+                Text("长按任意位置继续提问".uiLocalized)
                     .font(.system(size: 11))
                     .foregroundStyle(.tertiary)
             case .listening:
@@ -699,12 +700,12 @@ struct AnswerView: View {
             case .processing:
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.mini)
-                    Text("识别中").font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text("识别中".uiLocalized).font(.system(size: 11)).foregroundStyle(.secondary)
                 }
             case .noSpeech:
-                Text("没听到问题").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("没听到问题".uiLocalized).font(.system(size: 11)).foregroundStyle(.secondary)
             case .cancelled:
-                Text("已取消").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text("已取消".uiLocalized).font(.system(size: 11)).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if model.turns.contains(where: { $0.state == .answered }) {
@@ -800,7 +801,7 @@ struct TurnsView: View {
         case .thinking:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("正在思考…").font(.system(size: 13)).foregroundStyle(.secondary)
+                Text("正在思考…".uiLocalized).font(.system(size: 13)).foregroundStyle(.secondary)
             }
             .padding(.vertical, 4)
         case .streaming, .answered:
@@ -985,7 +986,7 @@ private struct GhostTextButton: View {
     @State private var hovering = false
     var body: some View {
         Button(action: action) {
-            Text(title)
+            Text(title.uiLocalized)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(hovering ? Color.primary : Color.secondary)
                 .padding(.vertical, 5)
