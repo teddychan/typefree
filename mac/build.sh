@@ -84,16 +84,15 @@ resign_with_developer_id() {
 }
 
 # Sparkle 比较的是 CFBundleVersion：每次构建写入 git 提交数，保证单调递增；
-# 同时写入 fork 版号（mac/CUSTOM_BUILD），关于页显示「<上游版本>-custom-<N>」。
+# 同一个构建号也写进 TypefreeCustomBuild，关于页显示「<上游版本>-custom-<构建号>」。
 stamp_bundle() {
     local plist="$1/Contents/Info.plist"
     local pb=/usr/libexec/PlistBuddy
-    local build_number custom_build
+    local build_number
     build_number="$(git -C "$SCRIPT_DIR" rev-list --count HEAD 2>/dev/null || echo 1)"
-    custom_build="$(tr -d '[:space:]' < "$SCRIPT_DIR/CUSTOM_BUILD")"
     "$pb" -c "Set :CFBundleVersion $build_number" "$plist"
-    "$pb" -c "Set :TypefreeCustomBuild $custom_build" "$plist" 2>/dev/null \
-        || "$pb" -c "Add :TypefreeCustomBuild string $custom_build" "$plist"
+    "$pb" -c "Set :TypefreeCustomBuild $build_number" "$plist" 2>/dev/null \
+        || "$pb" -c "Add :TypefreeCustomBuild string $build_number" "$plist"
 
     # GPL-3.0 与 Sparkle（MIT/BSD）要求二进制分发附带许可与版权声明
     local legal="$1/Contents/Resources/Licenses"

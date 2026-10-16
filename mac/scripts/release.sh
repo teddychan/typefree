@@ -5,8 +5,8 @@
 #                                       #          → EdDSA-sign the zip → write the appcast item locally
 #   bash scripts/release.sh --publish   # the same, then push the tag and create the GitHub Release
 #
-# Version comes from the built bundle: tag v<CFBundleShortVersionString>-custom-<CUSTOM_BUILD>,
-# sparkle:version = CFBundleVersion (git commit count). --publish needs a clean tree with that
+# Version comes from the built bundle: tag v<CFBundleShortVersionString>-custom-<build number>,
+# where the build number is CFBundleVersion = sparkle:version (git commit count). --publish needs a clean tree with that
 # tag on HEAD; the updated docs/handfree/appcast.xml is left for you to commit (the feed reads main).
 set -euo pipefail
 
@@ -53,7 +53,7 @@ INSTALLER_IDENTITY="${INSTALLER_IDENTITY:-$(find_identity "Developer ID Installe
 if [ "$PUBLISH" = "1" ]; then
     [ -z "$(git -C "$REPO_ROOT" status --porcelain)" ] || die "--publish needs a clean working tree"
     command -v gh >/dev/null || die "--publish needs the GitHub CLI (gh)"
-    TAG="v$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$MAC_DIR/Info.plist")-custom-$(tr -d '[:space:]' < "$MAC_DIR/CUSTOM_BUILD")"
+    TAG="v$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$MAC_DIR/Info.plist")-custom-$(git -C "$REPO_ROOT" rev-list --count HEAD)"
     [ "$(git -C "$REPO_ROOT" rev-parse -q --verify "refs/tags/$TAG^{commit}")" = "$(git -C "$REPO_ROOT" rev-parse HEAD)" ] \
         || die "tag $TAG must exist and point at HEAD (git tag $TAG)"
 fi
@@ -66,10 +66,9 @@ BUILT_APP="$MAC_DIR/dist/$APP_NAME Install.app"
 PLIST="$BUILT_APP/Contents/Info.plist"
 pb() { /usr/libexec/PlistBuddy -c "Print :$1" "$PLIST"; }
 UPSTREAM_VERSION="$(pb CFBundleShortVersionString)"
-CUSTOM_BUILD="$(pb TypefreeCustomBuild)"
 BUILD_NUMBER="$(pb CFBundleVersion)"
 MIN_SYSTEM="$(pb LSMinimumSystemVersion)"
-VERSION="$UPSTREAM_VERSION-custom-$CUSTOM_BUILD"
+VERSION="$UPSTREAM_VERSION-custom-$(pb TypefreeCustomBuild)"
 [ "$PUBLISH" = "0" ] || [ "$TAG" = "v$VERSION" ] || die "built version $VERSION does not match tag $TAG"
 TAG="v$VERSION"
 

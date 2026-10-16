@@ -19,9 +19,9 @@ Or open `VoicePolish.xcodeproj`, scheme `VoicePolish`.
 
 `build.sh` reads optional private settings from `local.build.env` (see `local.build.env.example`). Set
 `DEVELOPER_ID_IDENTITY` there to sign with your Developer ID; leave the trial variables empty — Handfree has
-no hosted trial server. Every build stamps `CFBundleVersion` with the git commit count (Sparkle compares it),
-writes the fork build counter from `CUSTOM_BUILD`, and copies `LICENSE`, `NOTICE` and
-`THIRD_PARTY_LICENSES/` into `Contents/Resources/Licenses`.
+no hosted trial server. Every build stamps `CFBundleVersion` with the git commit count (Sparkle compares it)
+and writes the same number into `TypefreeCustomBuild`, so About shows `<upstream>-custom-<build number>`. It
+also copies `LICENSE`, `NOTICE` and `THIRD_PARTY_LICENSES/` into `Contents/Resources/Licenses`.
 
 ## Identity
 
@@ -58,14 +58,14 @@ artifacts in `dist/release/<version>/`:
 It signs the zip with Sparkle's `sign_update` and adds an `<item>` at the top of
 `docs/handfree/appcast.xml`. A re-run replaces the item for the same build number.
 
-- **Version:** `<CFBundleShortVersionString>-custom-<CUSTOM_BUILD>` (e.g. `3.0.13-custom-1`), tag `v<version>`.
-  `sparkle:version` is `CFBundleVersion`, the git commit count.
+- **Version:** `<CFBundleShortVersionString>-custom-<build number>` (e.g. `3.0.13-custom-112`), tag `v<version>`.
+  The build number is the git commit count, the same as `CFBundleVersion` and `sparkle:version`.
 - **Needs:** the `Developer ID Application` and `Developer ID Installer` certificates for team `4AF3KGGV29`
   in the keychain (override with `DEVELOPER_ID_IDENTITY` / `INSTALLER_IDENTITY`), and the Sparkle EdDSA
   private key in the login keychain. It also needs a notarytool API key, read from
   `~/.claude/skills/update-macos-appstore/config.sh` or from `NOTARY_KEY_ID`, `NOTARY_ISSUER` and
   `NOTARY_KEY_P8`.
-- **Publishing:** bump `CUSTOM_BUILD` (or sync a new upstream version) and commit. Then run
+- **Publishing:** commit what you want to ship. Then run
   `git tag v<version>` on that commit and `bash scripts/release.sh --publish` from a clean tree. That pushes
   the tag and creates the GitHub Release with the zip, the pkg, `LICENSE.txt` and `NOTICE.txt`, which
   GPL-3.0 requires us to ship. Last, commit the updated `docs/handfree/appcast.xml` and merge it to `main`;

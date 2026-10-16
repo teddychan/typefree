@@ -7256,7 +7256,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTe
         var version = info?["CFBundleShortVersionString"] as? String
             ?? info?["CFBundleVersion"] as? String
             ?? "本地开发版"
-        // fork 自定义版号：mac/CUSTOM_BUILD 由构建脚本写进 TypefreeCustomBuild → 「3.0.13-custom-1」
+        // fork 自定义版号：构建脚本把构建号（git 提交数）写进 TypefreeCustomBuild → 「3.0.13-custom-112」
         if let customBuild = info?["TypefreeCustomBuild"] as? String, !customBuild.isEmpty {
             version += "-custom-\(customBuild)"
         }
